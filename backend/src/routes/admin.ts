@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import {
   users, patients, appointments, transactions, plans, userSubscriptions,
-  globalConfig, transcriptions, auditLog, notifications,
+  systemConfig, sessionTranscripts, auditLog, notifications,
 } from '../db/schema.js';
-import { eq, sql, desc, count } from 'drizzle-orm';
+import { eq, sql, desc } from 'drizzle-orm';
 import { adminGuard } from '../middleware/admin.js';
 import { hashPassword } from '../lib/auth.js';
 
@@ -15,7 +15,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const [totalUsers] = db.select({ c: sql<number>`count(*)` }).from(users).all();
     const [totalPatients] = db.select({ c: sql<number>`count(*)` }).from(patients).all();
     const [totalAppointments] = db.select({ c: sql<number>`count(*)` }).from(appointments).all();
-    const [totalTranscriptions] = db.select({ c: sql<number>`count(*)` }).from(transcriptions).all();
+    const [totalTranscriptions] = db.select({ c: sql<number>`count(*)` }).from(sessionTranscripts).all();
     const [monthRevenue] = db.select({ c: sql<number>`coalesce(sum(value),0)` }).from(transactions)
       .where(sql`type='receita' AND status='pago' AND date >= date('now','start of month')`).all();
 
@@ -46,7 +46,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // ── Global Config (API keys, settings) ────────────────────
   app.get('/api/admin/config', { preHandler: adminGuard }, async () => {
-    return db.select().from(globalConfig).all();
+    return db.select().from(systemConfig).all();
   });
 
   app.post('/api/admin/config', { preHandler: adminGuard }, async (req, reply) => {
@@ -57,12 +57,12 @@ export async function adminRoutes(app: FastifyInstance) {
     }).safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten().fieldErrors });
 
-    const existing = db.select().from(globalConfig).where(eq(globalConfig.key, parsed.data.key)).get();
+    const existing = db.select().from(systemConfig).where(eq(systemConfig.key, parsed.data.key)).get();
     if (existing) {
-      db.update(globalConfig).set({ value: parsed.data.value, updatedAt: new Date().toISOString() })
-        .where(eq(globalConfig.key, parsed.data.key)).run();
+      db.update(systemConfig).set({ value: parsed.data.value, updatedAt: new Date().toISOString() })
+        .where(eq(systemConfig.key, parsed.data.key)).run();
     } else {
-      db.insert(globalConfig).values({ ...parsed.data }).run();
+      db.insert(systemConfig).values({ ...parsed.data }).run();
     }
 
     // Log the change
@@ -76,7 +76,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.delete('/api/admin/config/:key', { preHandler: adminGuard }, async (req) => {
     const { key } = req.params as { key: string };
-    db.delete(globalConfig).where(eq(globalConfig.key, key)).run();
+    db.delete(systemConfig).where(eq(systemConfig.key, key)).run();
     return { ok: true };
   });
 
@@ -84,12 +84,12 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post('/api/admin/config/bulk', { preHandler: adminGuard }, async (req) => {
     const items = req.body as Array<{ key: string; value: string; description?: string }>;
     for (const item of items) {
-      const existing = db.select().from(globalConfig).where(eq(globalConfig.key, item.key)).get();
+      const existing = db.select().from(systemConfig).where(eq(systemConfig.key, item.key)).get();
       if (existing) {
-        db.update(globalConfig).set({ value: item.value, updatedAt: new Date().toISOString() })
-          .where(eq(globalConfig.key, item.key)).run();
+        db.update(systemConfig).set({ value: item.value, updatedAt: new Date().toISOString() })
+          .where(eq(systemConfig.key, item.key)).run();
       } else {
-        db.insert(globalConfig).values(item).run();
+        db.insert(systemConfig).values(item).run();
       }
     }
     return { ok: true };
@@ -234,7 +234,7 @@ export async function adminRoutes(app: FastifyInstance) {
       { key: 'trial_days', value: '14', description: 'Dias de trial para novos usuários' },
     ];
     for (const c of defaultConfig) {
-      db.insert(globalConfig).values(c).run();
+      db.insert(systemConfig).values(c).run();
     }
 
     return reply.status(201).send({ admin: { id: newAdmin.id, name: newAdmin.name, email: newAdmin.email }, plansCreated: 3, configKeysCreated: defaultConfig.length });

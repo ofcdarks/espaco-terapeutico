@@ -262,6 +262,7 @@ export const aiApi = {
       body: JSON.stringify(data),
     });
   },
+  async anamnese(data: { patientName: string; symptoms?: string; context?: string; field: string }) { return apiFetch<{ text: string; source: string }>("/api/ai/anamnese", { method: "POST", body: JSON.stringify(data) }); },
 };
 
 // ── Push notifications ──────────────────────────────────────

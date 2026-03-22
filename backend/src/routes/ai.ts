@@ -123,3 +123,53 @@ function performLocalAnalysis(req: { transcription: string; patientName: string;
     source: 'local',
   };
 }
+
+// AI-assisted anamnese generation
+export async function aiAnamneseRoute(app: FastifyInstance) {
+  app.post('/api/ai/anamnese', { preHandler: authGuard }, async (request, reply) => {
+    const parsed = z.object({
+      patientName: z.string().min(1),
+      symptoms: z.string().optional(),
+      context: z.string().optional(),
+      field: z.enum(['treatment', 'observations', 'prescriptions', 'diagnosis']),
+    }).safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten().fieldErrors });
+
+    const { patientName, symptoms, context, field } = parsed.data;
+    const AI_API_URL = getConfig('ai.api_url') || process.env.AI_API_URL || 'https://api.laozhang.ai/v1/chat/completions';
+    const AI_API_KEY = getConfig('ai.api_key') || process.env.AI_API_KEY;
+    const AI_MODEL = getConfig('ai.model') || process.env.AI_MODEL || 'deepseek-v3';
+
+    const prompts: Record<string, string> = {
+      treatment: `Gere um plano terapêutico detalhado para o paciente ${patientName}. ${symptoms ? `Queixas: ${symptoms}.` : ''} ${context ? `Contexto: ${context}.` : ''} Inclua abordagem terapêutica, objetivos, técnicas e frequência sugerida. Escreva em português, de forma profissional para prontuário clínico.`,
+      observations: `Gere observações clínicas de sessão para o paciente ${patientName}. ${symptoms ? `Queixas: ${symptoms}.` : ''} ${context ? `Contexto: ${context}.` : ''} Descreva comportamento observado, estado emocional, temas discutidos e evolução. Escreva em português profissional.`,
+      prescriptions: `Gere sugestões de encaminhamentos e recomendações para o paciente ${patientName}. ${symptoms ? `Queixas: ${symptoms}.` : ''} Inclua encaminhamentos, exercícios terapêuticos e orientações para casa. Escreva em português profissional.`,
+      diagnosis: `Sugira hipóteses diagnósticas (CID-10) para o paciente ${patientName} com base em: ${symptoms || 'sintomas gerais'}. ${context ? `Contexto: ${context}.` : ''} Liste os códigos CID-10 relevantes com descrição. Escreva em português.`,
+    };
+
+    if (!AI_API_KEY) {
+      return reply.send({ text: `[IA não configurada] Preencha manualmente o campo de ${field} para ${patientName}.`, source: 'fallback' });
+    }
+
+    try {
+      const response = await fetch(AI_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_API_KEY}` },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          messages: [
+            { role: 'system', content: 'Você é um assistente de psicologia clínica. Gere textos profissionais para prontuário. Responda diretamente o texto solicitado, sem formatação JSON.' },
+            { role: 'user', content: prompts[field] },
+          ],
+          temperature: 0.7, max_tokens: 1000,
+        }),
+      });
+      if (!response.ok) return reply.send({ text: 'Erro na API de IA. Preencha manualmente.', source: 'error' });
+      const data = await response.json() as any;
+      return { text: data.choices?.[0]?.message?.content || '', source: 'ai' };
+    } catch (err: any) {
+      app.log.error(`AI anamnese error: ${err.message}`);
+      return { text: 'Erro ao gerar. Preencha manualmente.', source: 'error' };
+    }
+  });
+}

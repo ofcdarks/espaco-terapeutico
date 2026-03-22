@@ -2,10 +2,11 @@ import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader, SearchInput, EmptyState, TableSkeleton, Modal, ConfirmDialog } from "@/components/common";
 import { useRecords, usePatients } from "@/hooks/useData";
-import { FileText, Edit, Trash2, Eye, Brain, Search } from "lucide-react";
+import { Brain, Wand2, Search, Edit, Trash2, Eye, Plus } from "lucide-react";
 import { formatDate, useDebounce } from "@/lib/utils";
-import { aiApi } from "@/lib/api";
+
 import { toast } from "sonner";
+import { aiApi, recordsApi } from "@/lib/api";
 import type { ConsultationRecord } from "@/types";
 
 // CID-10 common codes for mental health
@@ -29,6 +30,21 @@ export default function Prontuarios() {
   const [cidSearch, setCidSearch] = useState(""); const [showCid, setShowCid] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [generating, setGenerating] = useState("");
+
+  const generateField = async (field: string) => {
+    const patientName = patients.find((p: any) => p.id === form.patientId)?.name || "Paciente";
+    setGenerating(field);
+    try {
+      const result = await aiApi.anamnese({ patientName, symptoms: form.diagnosis, context: form.observations, field });
+      if (result.text) {
+        const fieldMap: Record<string, string> = { treatment: "treatment", observations: "observations", prescriptions: "prescriptions", diagnosis: "diagnosis" };
+        setForm(f => ({ ...f, [fieldMap[field]]: f[fieldMap[field] as keyof typeof f] ? f[fieldMap[field] as keyof typeof f] + "\n\n" + result.text : result.text }));
+        toast.success("Texto gerado pela IA!");
+      }
+    } catch { toast.error("Erro ao gerar com IA"); }
+    setGenerating("");
+  };
   const [form, setForm] = useState({ patientId:"", date: new Date().toISOString().split("T")[0], diagnosis:"", treatment:"", observations:"", prescriptions:"" });
 
   const filtered = records.filter(r => r.patientName?.toLowerCase().includes(dSearch.toLowerCase()) || r.diagnosis?.toLowerCase().includes(dSearch.toLowerCase()));
@@ -160,11 +176,11 @@ export default function Prontuarios() {
             )}
           </div>
 
-          <div><label className="text-xs font-medium text-surface-500 mb-1 block">Tratamento / Plano Terapêutico</label>
+          <div><div className="flex items-center justify-between mb-1"><label className="text-xs font-medium text-surface-500">Tratamento / Plano Terapêutico</label><button type="button" onClick={() => generateField("treatment")} disabled={generating==="treatment"} className="text-[10px] text-brand-600 dark:text-brand-300 flex items-center gap-1 hover:underline"><Wand2 size={10} /> Gerar com IA</button></div>
             <textarea value={form.treatment} onChange={e => setForm(f => ({...f, treatment: e.target.value}))} className="input-premium w-full h-20 py-2 resize-none" /></div>
-          <div><label className="text-xs font-medium text-surface-500 mb-1 block">Observações da Sessão</label>
+          <div><div className="flex items-center justify-between mb-1"><label className="text-xs font-medium text-surface-500">Observações da Sessão</label><button type="button" onClick={() => generateField("observations")} disabled={generating==="observations"} className="text-[10px] text-brand-600 dark:text-brand-300 flex items-center gap-1 hover:underline"><Wand2 size={10} /> Gerar com IA</button></div>
             <textarea value={form.observations} onChange={e => setForm(f => ({...f, observations: e.target.value}))} className="input-premium w-full h-24 py-2 resize-none" placeholder="Descreva o que aconteceu na sessão..." /></div>
-          <div><label className="text-xs font-medium text-surface-500 mb-1 block">Prescrições / Encaminhamentos</label>
+          <div><div className="flex items-center justify-between mb-1"><label className="text-xs font-medium text-surface-500">Prescrições / Encaminhamentos</label><button type="button" onClick={() => generateField("prescriptions")} disabled={generating==="prescriptions"} className="text-[10px] text-brand-600 dark:text-brand-300 flex items-center gap-1 hover:underline"><Wand2 size={10} /> Gerar com IA</button></div>
             <textarea value={form.prescriptions} onChange={e => setForm(f => ({...f, prescriptions: e.target.value}))} className="input-premium w-full h-16 py-2 resize-none" /></div>
           <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">{editing ? "Salvar" : "Criar"}</button></div>
         </form>

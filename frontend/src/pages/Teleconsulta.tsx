@@ -18,7 +18,7 @@ export default function Teleconsulta() {
     try {
       const r = await fetch(`${API}/api/telehealth/my-sessions`, { headers: auth() });
       const d = await r.json();
-      setSessions(d || []);
+      setSessions(Array.isArray(d) ? d : []);
     } catch {}
     setLoading(false);
   };

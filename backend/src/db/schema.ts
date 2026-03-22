@@ -385,3 +385,13 @@ export const contractTemplates = sqliteTable('contract_templates', {
 }, (t) => ({
   ownerIdx: index('ct_owner_idx').on(t.ownerId),
 }));
+
+export const registrationLinks = sqliteTable('registration_links', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  ownerId: text('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  url: text('url').notNull().default(''),
+  usedAt: text('used_at'),
+  patientId: text('patient_id'),
+  expiresAt: text('expires_at').notNull(),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});

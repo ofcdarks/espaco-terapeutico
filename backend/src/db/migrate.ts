@@ -306,6 +306,15 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS registration_links (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    url TEXT NOT NULL DEFAULT "",
+    used_at TEXT,
+    patient_id TEXT,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime("now"))
+  );
   CREATE TABLE IF NOT EXISTS contract_templates (
     id TEXT PRIMARY KEY,
     owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -352,6 +361,7 @@ const alterStatements = [
   "ALTER TABLE user_subscriptions ADD COLUMN stripe_subscription_id TEXT",
   "ALTER TABLE user_subscriptions ADD COLUMN stripe_price_id TEXT",
   "ALTER TABLE packages ADD COLUMN stripe_price_id TEXT",
+  "CREATE TABLE IF NOT EXISTS registration_links (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, url TEXT DEFAULT , used_at TEXT, patient_id TEXT, expires_at TEXT NOT NULL, created_at TEXT DEFAULT (datetime(now)))",
 ];
 
 for (const stmt of alterStatements) {

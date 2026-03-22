@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader, EmptyState, Modal } from "@/components/common";
+import { EmptyState } from "@/components/common";
 import { useNavigate } from "react-router-dom";
-import { Video, Copy, Check, Trash2, ExternalLink, Plus, Users, CheckCircle } from "lucide-react";
+import { Video, Copy, Check, Trash2, ExternalLink, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -12,7 +12,6 @@ export default function Teleconsulta() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState("");
-  const [newRoom, setNewRoom] = useState<any>(null);
   const nav = useNavigate();
 
   const refresh = async () => {
@@ -26,11 +25,16 @@ export default function Teleconsulta() {
 
   useEffect(() => { refresh(); const i = setInterval(refresh, 8000); return () => clearInterval(i); }, []);
 
-  const createRoom = async () => {
-    const r = await fetch(`${API}/api/telehealth/sessions`, { method: 'POST', headers: auth(), body: JSON.stringify({}) });
-    const d = await r.json();
-    setNewRoom(d);
-    refresh();
+  // Create room and navigate directly to it
+  const createAndEnter = async () => {
+    try {
+      const r = await fetch(`${API}/api/telehealth/sessions`, { method: 'POST', headers: auth(), body: JSON.stringify({}) });
+      const d = await r.json();
+      if (d.sessionId) {
+        toast.success("Sala criada!");
+        nav(`/teleconsulta/sala/${d.sessionId}`);
+      }
+    } catch { toast.error("Erro ao criar sala"); }
   };
 
   const endSession = async (id: string) => {
@@ -39,9 +43,7 @@ export default function Teleconsulta() {
   };
 
   const copyLink = (link: string, id: string) => {
-    navigator.clipboard.writeText(link);
-    setCopied(id); setTimeout(() => setCopied(""), 2000);
-    toast.success("Link copiado!");
+    navigator.clipboard.writeText(link); setCopied(id); setTimeout(() => setCopied(""), 2000); toast.success("Link copiado!");
   };
 
   const patientLink = (id: string) => `${window.location.origin}/teleconsulta/entrar/${id}`;
@@ -56,58 +58,14 @@ export default function Teleconsulta() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/80">{sessions.length} salas</span>
-          <button onClick={createRoom} className="h-9 px-4 rounded-xl text-sm font-medium flex items-center gap-2 bg-white text-brand-800">
+          <button onClick={createAndEnter} className="h-9 px-4 rounded-xl text-sm font-medium flex items-center gap-2 bg-white text-brand-800">
             <Plus size={14} /> Nova Sala
           </button>
         </div>
       </div>
 
-      {/* Room created modal */}
-      <Modal open={!!newRoom} onClose={() => setNewRoom(null)} title="" size="sm">
-        {newRoom && (
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={28} className="text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h2 className="text-lg font-semibold mb-1">Sala Criada com Sucesso!</h2>
-            <p className="text-xs text-surface-500 mb-5">Sua nova sala de reunião está pronta.</p>
-
-            <div className="text-left space-y-4">
-              <div>
-                <p className="text-[10px] text-surface-500 uppercase tracking-wider mb-1">Código da Sala</p>
-                <p className="text-lg font-bold text-brand-600 dark:text-brand-300">{newRoom.sessionId}</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850 border border-surface-200 dark:border-surface-700">
-                <p className="text-[10px] text-surface-500 uppercase tracking-wider mb-1">Link do Paciente</p>
-                <code className="text-xs break-all text-surface-600 dark:text-surface-400">{patientLink(newRoom.sessionId)}</code>
-                <p className="text-[9px] text-surface-400 mt-1 italic">Envie este link para o paciente acessar a sala</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-5">
-              <button onClick={() => copyLink(patientLink(newRoom.sessionId), 'new-patient')}
-                className="h-10 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 bg-brand-600 text-white dark:bg-brand-300 dark:text-brand-900">
-                {copied === 'new-patient' ? <><Check size={12} /> Copiado!</> : <><Copy size={12} /> Link do Paciente</>}
-              </button>
-              <button onClick={() => copyLink(proLink(newRoom.sessionId), 'new-pro')}
-                className="h-10 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border border-brand-600 text-brand-600 dark:border-brand-300 dark:text-brand-300">
-                {copied === 'new-pro' ? <><Check size={12} /> Copiado!</> : <><Copy size={12} /> Link Profissional</>}
-              </button>
-            </div>
-
-            <button onClick={() => { setNewRoom(null); nav(`/teleconsulta/sala/${newRoom.sessionId}`); }}
-              className="w-full h-9 mt-3 rounded-xl text-xs text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-600/5 transition-all flex items-center justify-center gap-1.5">
-              <ExternalLink size={12} /> Entrar na sala agora
-            </button>
-
-            <button onClick={() => setNewRoom(null)} className="text-xs text-surface-400 mt-3 hover:text-surface-600">Fechar</button>
-          </div>
-        )}
-      </Modal>
-
       {sessions.length === 0 ? (
-        <EmptyState icon={Video} title="Nenhuma sala" description="Crie uma sala de teleconsulta para atender seus pacientes" action={{ label: "Nova Sala", onClick: createRoom }} />
+        <EmptyState icon={Video} title="Nenhuma sala" description="Crie uma sala e entre diretamente na videochamada" action={{ label: "Nova Sala", onClick: createAndEnter }} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 page-enter">
           {sessions.map(s => (
@@ -123,9 +81,7 @@ export default function Teleconsulta() {
                       <p className="text-[10px] text-surface-500">Sala de Reunião</p>
                     </div>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'active' || s.status === 'waiting' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-surface-100 text-surface-500 dark:bg-surface-800'}`}>
-                    {s.status === 'active' || s.status === 'waiting' ? 'Ativa' : 'Encerrada'}
-                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">Ativa</span>
                 </div>
                 <p className="text-[10px] text-surface-400">{new Date(s.createdAt || Date.now()).toLocaleString('pt-BR')}</p>
                 {s.patientsWaiting > 0 && (
@@ -135,7 +91,6 @@ export default function Teleconsulta() {
                   </div>
                 )}
               </div>
-
               <div className="p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => copyLink(patientLink(s.sessionId), `${s.sessionId}-p`)}

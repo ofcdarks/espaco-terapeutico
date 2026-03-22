@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Calendar, Users, FileText, DollarSign,
-  FileCheck, FileSignature, BarChart3, Settings, LogOut, Video,
+  FileCheck, FileSignature, BarChart3, Link2, CalendarClock, MessageSquare, Mail, Settings, LogOut, Video,
   ChevronLeft, Menu, X, Bell, Shield,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,10 @@ const NAV = [
   { to: "/documentos", icon: FileCheck, label: "Documentos" },
   { to: "/contratos", icon: FileSignature, label: "Contratos" },
   { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
+  { to: "/links-cadastro", icon: Link2, label: "Links Cadastro" },
+  { to: "/agenda-publica", icon: CalendarClock, label: "Agenda Pública" },
+  { to: "/mensagens", icon: MessageSquare, label: "Mensagens" },
+  { to: "/emails", icon: Mail, label: "E-mails" },
 ];
 
 const BOTTOM_NAV = [

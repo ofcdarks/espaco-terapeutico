@@ -20,6 +20,10 @@ import Portal from "./pages/Portal";
 import Admin from "./pages/Admin";
 import Contratos from "./pages/Contratos";
 import AssinarContrato from "./pages/AssinarContrato";
+import LinksCadastro from "./pages/LinksCadastro";
+import CadastroPaciente from "./pages/CadastroPaciente";
+import AgendaPublica from "./pages/AgendaPublica";
+import MensagensAgendadas from "./pages/MensagensAgendadas";
 import NotFound from "./pages/NotFound";
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } } });
@@ -40,6 +44,7 @@ export default function App() {
               <Route path="/teleconsulta/entrar/:sessionId" element={<PatientWaiting />} />
               <Route path="/portal/:patientId" element={<Portal />} />
               <Route path="/assinar/:id" element={<AssinarContrato />} />
+              <Route path="/cadastro/:linkId" element={<CadastroPaciente />} />
               <Route path="/" element={<P><Dashboard /></P>} />
               <Route path="/agenda" element={<P><Agenda /></P>} />
               <Route path="/pacientes" element={<P><Pacientes /></P>} />
@@ -52,6 +57,10 @@ export default function App() {
               <Route path="/configuracoes" element={<P><Configuracoes /></P>} />
               <Route path="/teleconsulta" element={<P><Teleconsulta /></P>} />
               <Route path="/teleconsulta/sala/:sessionId" element={<P><VideoRoom /></P>} />
+              <Route path="/links-cadastro" element={<P><LinksCadastro /></P>} />
+              <Route path="/agenda-publica" element={<P><AgendaPublica /></P>} />
+              <Route path="/mensagens" element={<P><MensagensAgendadas /></P>} />
+              <Route path="/emails" element={<P><MensagensAgendadas /></P>} />
               <Route path="/admin" element={<P><Admin /></P>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

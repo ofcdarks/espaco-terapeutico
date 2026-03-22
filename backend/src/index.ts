@@ -31,6 +31,7 @@ import { portalRoutes } from './routes/portal.js';
 import { csvRoutes } from './routes/csv.js';
 import { contractRoutes } from './routes/contracts.js';
 import { signalingRoutes } from './routes/signaling.js';
+import { registrationLinkRoutes } from './routes/registration-links.js';
 import { registerCronJobs } from './cron/index.js';
 import './db/index.js';
 
@@ -103,6 +104,7 @@ await app.register(portalRoutes);
 await app.register(csvRoutes);
 await app.register(contractRoutes);
 await app.register(signalingRoutes);
+await app.register(registrationLinkRoutes);
 
 app.get('/api/health', async () => ({
   status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime(),

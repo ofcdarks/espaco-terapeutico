@@ -26,7 +26,7 @@ export default function Teleconsulta() {
   useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
 
   const createRoom = async () => {
-    const r = await fetch(`${API}/api/telehealth/sessions`, { method: 'POST', headers: auth() });
+    const r = await fetch(`${API}/api/telehealth/sessions`, { method: 'POST', headers: auth(), body: JSON.stringify({}) });
     const d = await r.json();
     toast.success("Sala criada!");
     refresh();
@@ -67,7 +67,7 @@ export default function Teleconsulta() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 page-enter">
           {sessions.map(s => (
-            <div key={s.id} className="glass-card overflow-hidden">
+            <div key={s.sessionId} className="glass-card overflow-hidden">
               <div className="p-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export default function Teleconsulta() {
                       <Video size={14} className="text-brand-600 dark:text-brand-300" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">{s.id?.slice(0, 8)}</p>
+                      <p className="text-sm font-semibold">{s.sessionId?.slice(0, 8)}</p>
                       <p className="text-[10px] text-surface-500">Sala de Reunião</p>
                     </div>
                   </div>
@@ -94,21 +94,21 @@ export default function Teleconsulta() {
 
               <div className="p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => copyLink(s.id, 'patient')}
+                  <button onClick={() => copyLink(s.sessionId, 'patient')}
                     className="h-8 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 bg-brand-600 text-white dark:bg-brand-300 dark:text-brand-900">
-                    {copied === `${s.id}-patient` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Paciente</>}
+                    {copied === `${s.sessionId}-patient` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Paciente</>}
                   </button>
-                  <button onClick={() => copyLink(s.id, 'pro')}
+                  <button onClick={() => copyLink(s.sessionId, 'pro')}
                     className="h-8 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 border" style={{ borderColor: 'hsl(var(--border))' }}>
-                    {copied === `${s.id}-pro` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Profissional</>}
+                    {copied === `${s.sessionId}-pro` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Profissional</>}
                   </button>
                 </div>
-                <button onClick={() => nav(`/teleconsulta/sala/${s.id}`)}
+                <button onClick={() => nav(`/teleconsulta/sala/${s.sessionId}`)}
                   className="w-full h-8 rounded-lg text-[11px] flex items-center justify-center gap-1.5 border text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-600/5 transition-all" style={{ borderColor: 'hsl(var(--border))' }}>
                   <ExternalLink size={10} /> Entrar como profissional
                 </button>
                 {s.status === 'active' && (
-                  <button onClick={() => endSession(s.id)}
+                  <button onClick={() => endSession(s.sessionId)}
                     className="w-full h-7 rounded-lg text-[10px] flex items-center justify-center gap-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all">
                     <Trash2 size={10} /> Encerrar Sala
                   </button>

@@ -181,18 +181,18 @@ export function StatCard({ label, value, icon: Icon, trend, color = "brand" }: {
 export function Modal({ open, onClose, title, children, size = "md" }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; size?: "sm" | "md" | "lg";
 }) {
-  const firstFocusRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (open) {
-      firstFocusRef.current?.focus();
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
-    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
-  }, [open, onClose]);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
 
   if (!open) return null;
   const sizes = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" };
@@ -202,7 +202,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
       <div className={`glass-card w-full ${sizes[size]} p-6 animate-slide-up max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 id="modal-title" className="text-lg font-semibold">{title}</h2>
-          <button ref={firstFocusRef} onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-surface-400 hover:text-foreground hover:bg-surface-100 dark:hover:bg-surface-800 transition-all"
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-surface-400 hover:text-foreground hover:bg-surface-100 dark:hover:bg-surface-800 transition-all"
             aria-label="Fechar"><X size={18} /></button>
         </div>
         {children}

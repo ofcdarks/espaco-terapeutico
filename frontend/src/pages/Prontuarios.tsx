@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader, SearchInput, EmptyState, TableSkeleton, Modal, ConfirmDialog } from "@/components/common";
 import { useRecords, usePatients } from "@/hooks/useData";
-import { Brain, Wand2, Search, Edit, Trash2, Eye, Plus } from "lucide-react";
+import { Brain, Wand2, Search, Edit, Trash2, Eye, Plus, FileText } from "lucide-react";
 import { formatDate, useDebounce } from "@/lib/utils";
 
 import { toast } from "sonner";

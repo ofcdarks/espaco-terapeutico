@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Video, Mic, MicOff, VideoOff, PhoneOff, Loader2, AlertCircle, MessageSquare, Send, X } from "lucide-react";
+import { Video, Mic, MicOff, VideoOff, PhoneOff, Loader2, AlertCircle, MessageSquare, Send } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || '';
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
@@ -16,106 +16,77 @@ export default function PatientWaiting() {
   const iceRef = useRef(0);
   const chatIdxRef = useRef(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const visitorId = useRef(Math.random().toString(36).slice(2, 8));
   const activeRef = useRef(true);
 
-  const [step, setStep] = useState<'name' | 'waiting' | 'connecting' | 'connected' | 'ended' | 'error'>('name');
-  const [name, setName] = useState('');
+  const [step, setStep] = useState<'connecting' | 'connected' | 'ended' | 'error'>('connecting');
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatMsg, setChatMsg] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
-  const [statusMsg, setStatusMsg] = useState('');
+  const [statusMsg, setStatusMsg] = useState('Conectando à sala...');
+
+  useEffect(() => {
+    activeRef.current = true;
+    connect();
+    return () => { activeRef.current = false; cleanup(); };
+  }, [sessionId]);
 
   const cleanup = () => {
-    activeRef.current = false;
     if (pollRef.current) clearInterval(pollRef.current);
     if (chatPollRef.current) clearInterval(chatPollRef.current);
     pcRef.current?.close();
     streamRef.current?.getTracks().forEach(t => t.stop());
   };
 
-  useEffect(() => () => cleanup(), []);
-
-  // Join waiting room + poll for admission + auto-connect
-  const joinWaiting = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    activeRef.current = true;
-    setStep('waiting');
-    setStatusMsg('Entrando na sala de espera...');
-
-    // Register in waiting room
-    await fetch(`${API}/api/signal/${sessionId}/waiting`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: visitorId.current, name: name.trim() }) }).catch(() => {});
-
-    setStatusMsg('Aguardando o profissional admitir você...');
-
-    // Poll: wait for admission AND offer simultaneously
-    pollRef.current = setInterval(async () => {
-      if (!activeRef.current) return;
-      try {
-        // Check admission
-        const ar = await fetch(`${API}/api/signal/${sessionId}/admitted/${visitorId.current}`);
-        const ad = await ar.json();
-
-        // Check if offer exists (therapist started call)
-        const or2 = await fetch(`${API}/api/signal/${sessionId}/offer`);
-        const od = await or2.json();
-
-        if (ad.admitted && od.offer) {
-          // Both admitted and offer ready — connect!
-          clearInterval(pollRef.current);
-          setStep('connecting');
-          setStatusMsg('Conectando à chamada...');
-          doConnect(od.offer);
-        } else if (ad.admitted && !od.offer) {
-          setStatusMsg('Admitido! Aguardando profissional iniciar a chamada...');
-        }
-      } catch {}
-    }, 1500);
-  };
-
-  const doConnect = async (offer: any) => {
-    // Get media
+  const connect = async () => {
+    // 1. Get media first
+    setStatusMsg('Acessando câmera e microfone...');
     let stream: MediaStream | null = null;
     for (const c of [{ video: true, audio: true }, { video: true, audio: false }, { video: false, audio: true }]) {
       try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch { continue; }
     }
-    if (!stream) { setStep('error'); setStatusMsg('Não foi possível acessar câmera/microfone'); return; }
+    if (!stream || !activeRef.current) { setStep('error'); setStatusMsg('Não foi possível acessar câmera/microfone'); return; }
     streamRef.current = stream;
     if (localRef.current) localRef.current.srcObject = stream;
 
+    // 2. Wait for therapist's offer (poll up to 3 min)
+    setStatusMsg('Aguardando profissional iniciar a chamada...');
+    let offer: any = null;
+    for (let i = 0; i < 180 && activeRef.current; i++) {
+      try {
+        const r = await fetch(`${API}/api/signal/${sessionId}/offer`);
+        const d = await r.json();
+        if (d.offer) { offer = d.offer; break; }
+      } catch {}
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    if (!offer || !activeRef.current) { setStep('error'); setStatusMsg('O profissional ainda não iniciou a chamada. Tente novamente.'); return; }
+
+    // 3. Create peer connection
+    setStatusMsg('Estabelecendo conexão...');
     const pc = new RTCPeerConnection({ iceServers: ICE });
     pcRef.current = pc;
     stream.getTracks().forEach(t => pc.addTrack(t, stream!));
 
     pc.ontrack = (e) => {
-      if (remoteRef.current && e.streams[0]) {
-        remoteRef.current.srcObject = e.streams[0];
-        setStep('connected');
-      }
+      if (remoteRef.current && e.streams[0]) { remoteRef.current.srcObject = e.streams[0]; setStep('connected'); }
     };
-
     pc.onicecandidate = (e) => {
       if (e.candidate) fetch(`${API}/api/signal/${sessionId}/ice/guest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidate: e.candidate.toJSON() }) }).catch(() => {});
     };
-
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') setStep('ended');
     };
 
-    try {
-      await pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      await fetch(`${API}/api/signal/${sessionId}/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: pc.localDescription?.toJSON() }) });
-    } catch { setStep('error'); return; }
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await fetch(`${API}/api/signal/${sessionId}/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: pc.localDescription?.toJSON() }) });
 
-    // ICE + chat polling
+    // 4. ICE polling
     pollRef.current = setInterval(async () => {
-      if (!activeRef.current) return;
       try {
         const r = await fetch(`${API}/api/signal/${sessionId}/ice/guest?from=${iceRef.current}`);
         const d = await r.json();
@@ -124,6 +95,7 @@ export default function PatientWaiting() {
       } catch {}
     }, 1000);
 
+    // 5. Chat polling
     chatPollRef.current = setInterval(async () => {
       try {
         const r = await fetch(`${API}/api/signal/${sessionId}/chat?from=${chatIdxRef.current}`);
@@ -149,35 +121,17 @@ export default function PatientWaiting() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // ── Name ──
-  if (step === 'name') return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1a1412' }}>
-      <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(196,168,130,0.2)' }}><Video size={28} style={{ color: '#c4a882' }} /></div>
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#e8d8c3' }}>Teleconsulta</h1>
-        <p className="text-sm mb-8" style={{ color: '#8b7f77' }}>Informe seu nome para entrar na sala</p>
-        <form onSubmit={joinWaiting} className="space-y-4">
-          <input value={name} onChange={e => setName(e.target.value)} className="w-full h-12 rounded-xl px-4 text-sm" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e8d8c3' }} placeholder="Seu nome" required autoFocus />
-          <button type="submit" className="w-full h-12 rounded-xl font-medium text-sm" style={{ background: '#54423b', color: '#f5f2ee' }}>Entrar</button>
-        </form>
-      </div>
-    </div>
-  );
-
-  // ── Waiting / Connecting ──
-  if (step === 'waiting' || step === 'connecting') return (
+  if (step === 'connecting') return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1a1412' }}>
       <div className="text-center">
         <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(196,168,130,0.1)' }}><Video size={32} style={{ color: '#c4a882' }} /></div>
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#e8d8c3' }}>{step === 'connecting' ? 'Conectando...' : 'Sala de Espera'}</h1>
-        <p className="text-sm mb-2" style={{ color: '#e8d8c3' }}>Olá, {name}!</p>
+        <h1 className="text-xl font-semibold mb-3" style={{ color: '#e8d8c3' }}>Entrando na Teleconsulta</h1>
         <p className="text-sm mb-8" style={{ color: '#8b7f77' }}>{statusMsg}</p>
         <Loader2 size={24} className="animate-spin mx-auto" style={{ color: '#c4a882' }} />
       </div>
     </div>
   );
 
-  // ── Connected ──
   if (step === 'connected') return (
     <div className="h-screen flex flex-col" style={{ background: '#0f0a08' }}>
       <div className="h-10 flex items-center justify-between px-3 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(26,20,18,0.9)' }}>
@@ -228,7 +182,7 @@ export default function PatientWaiting() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f5f2ee' }}>
-      <div className="text-center"><AlertCircle size={40} style={{ color: '#c62828' }} className="mx-auto mb-4" /><h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Erro na conexão</h1><p className="text-sm mb-4" style={{ color: '#b8b0aa' }}>{statusMsg || 'Verifique o link.'}</p><button onClick={() => window.location.reload()} className="h-10 px-6 rounded-xl text-sm font-medium" style={{ background: '#54423b', color: '#f5f2ee' }}>Tentar novamente</button></div>
+      <div className="text-center"><AlertCircle size={40} style={{ color: '#c62828' }} className="mx-auto mb-4" /><h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Não foi possível conectar</h1><p className="text-sm mb-4" style={{ color: '#b8b0aa' }}>{statusMsg}</p><button onClick={() => window.location.reload()} className="h-10 px-6 rounded-xl text-sm font-medium" style={{ background: '#54423b', color: '#f5f2ee' }}>Tentar novamente</button></div>
     </div>
   );
 }

@@ -213,7 +213,12 @@ export function Modal({ open, onClose, title, children, size = "md" }: {
 
 // ── Masked Input ────────────────────────────────────────────
 export function MaskedInput({ value, onChange, mask, ...props }: {
-  value: string; onChange: (v: string) => void; mask: (v: string) => string;
+  value: string; onChange: (v: string) => void; mask: string | ((v: string) => string);
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value">) {
-  return <input {...props} value={mask(value)} onChange={e => onChange(e.target.value.replace(/\D/g, ""))} className={`input-premium ${props.className || ""}`} />;
+  const masks: Record<string, (v: string) => string> = {
+    phone: (v) => { const d = (v||"").replace(/\D/g, "").slice(0, 11); if (d.length <= 2) return d.length ? `(${d}` : ""; if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`; return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`; },
+    cpf: (v) => { const d = (v||"").replace(/\D/g, "").slice(0, 11); if (d.length <= 3) return d; if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`; if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`; return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`; },
+  };
+  const fn = typeof mask === "function" ? mask : masks[mask] || ((v: string) => v);
+  return <input {...props} value={fn(value || "")} onChange={e => onChange(e.target.value.replace(/\D/g, ""))} className={`input-premium ${props.className || ""}`} />;
 }

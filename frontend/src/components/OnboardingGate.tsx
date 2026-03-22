@@ -8,21 +8,16 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (loading || !isAuthenticated || !user) return;
-    // Show if: localStorage doesn't have flag AND user hasn't completed onboarding
+    if (loading || !isAuthenticated || !user) { setChecked(true); return; }
     const localDone = localStorage.getItem("onboarding_done");
     const profileDone = (user as any)?.onboardingComplete;
-    if (!localDone && !profileDone) {
-      setShowOnboarding(true);
-    }
+    if (!localDone && !profileDone) setShowOnboarding(true);
     setChecked(true);
   }, [loading, isAuthenticated, user]);
 
-  if (!checked || loading) return <>{children}</>;
-  
+  if (!checked) return null;
   if (showOnboarding && isAuthenticated) {
-    return <OnboardingWizard onComplete={() => { setShowOnboarding(false); }} />;
+    return <OnboardingWizard onComplete={() => { localStorage.setItem("onboarding_done", "true"); setShowOnboarding(false); }} />;
   }
-
   return <>{children}</>;
 }

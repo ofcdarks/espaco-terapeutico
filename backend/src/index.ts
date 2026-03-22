@@ -64,7 +64,7 @@ await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 // Auth with stricter rate limit
 await app.register(async function authLimiter(instance) {
   await instance.register(rateLimit, {
-    max: 10, timeWindow: '5 minutes',
+    max: 20, timeWindow: '5 minutes',
     keyGenerator: (req) => req.ip,
     errorResponseBuilder: () => ({ statusCode: 429, error: 'Muitas tentativas. Aguarde 5 minutos.' }),
   });

@@ -69,14 +69,14 @@ await app.register(helmet, {
 app.addHook("onSend", async (_req, reply) => {
   reply.header("Permissions-Policy", "camera=(self), microphone=(self), fullscreen=(self), display-capture=(self)");
 });
-await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+await app.register(rateLimit, { max: 500, timeWindow: '1 minute' });
 
 // Auth with stricter rate limit
 await app.register(async function authLimiter(instance) {
   await instance.register(rateLimit, {
-    max: 20, timeWindow: '5 minutes',
+    max: 200, timeWindow: '5 minutes',
     keyGenerator: (req) => req.ip,
-    errorResponseBuilder: () => ({ statusCode: 429, error: 'Muitas tentativas. Aguarde 5 minutos.' }),
+    errorResponseBuilder: () => ({ statusCode: 429, error: 'Too Many Requests' }),
   });
   await instance.register(authRoutes);
 });

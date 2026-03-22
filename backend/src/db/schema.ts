@@ -348,65 +348,6 @@ export const sessionTranscripts = sqliteTable('session_transcripts', {
 }));
 
 // ============================================================
-// ADMIN / SAAS TABLES
-// ============================================================
-
-export const globalConfig = sqliteTable('global_config', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
-  description: text('description'),
-  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
-});
-
-export const plans = sqliteTable('plans', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  maxPatients: integer('max_patients').notNull().default(50),
-  maxAppointmentsMonth: integer('max_appointments_month').notNull().default(100),
-  hasAI: integer('has_ai', { mode: 'boolean' }).notNull().default(false),
-  hasTelehealth: integer('has_telehealth', { mode: 'boolean' }).notNull().default(false),
-  hasWhatsapp: integer('has_whatsapp', { mode: 'boolean' }).notNull().default(false),
-  hasTranscription: integer('has_transcription', { mode: 'boolean' }).notNull().default(false),
-  price: real('price').notNull().default(0),
-  stripePriceId: text('stripe_price_id'),
-  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-});
-
-export const userSubscriptions = sqliteTable('user_subscriptions', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
-  planId: text('plan_id').notNull().references(() => plans.id),
-  stripeSubscriptionId: text('stripe_subscription_id'),
-  stripePriceId: text('stripe_price_id'),
-  status: text('status', { enum: ['active', 'trial', 'expired', 'cancelled'] }).notNull().default('trial'),
-  trialEndsAt: text('trial_ends_at'),
-  currentPeriodEnd: text('current_period_end'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-}, (t) => ({
-  userIdx: index('sub_user_idx').on(t.userId),
-}));
-
-export const transcriptions = sqliteTable('transcriptions', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  ownerId: text('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  appointmentId: text('appointment_id').references(() => appointments.id),
-  patientId: text('patient_id').references(() => patients.id),
-  patientName: text('patient_name').notNull().default(''),
-  sessionDate: text('session_date').notNull(),
-  durationMinutes: integer('duration_minutes'),
-  rawTranscription: text('raw_transcription').notNull(),
-  aiAnalysis: text('ai_analysis'), // JSON
-  status: text('status', { enum: ['pending', 'transcribing', 'analyzing', 'done', 'error'] }).notNull().default('pending'),
-  provider: text('provider', { enum: ['downsub', 'whisper', 'web_speech', 'manual'] }).notNull().default('manual'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-}, (t) => ({
-  ownerIdx: index('trans_owner_idx').on(t.ownerId),
-  patientIdx: index('trans_patient_idx').on(t.patientId),
-}));
-
-// ============================================================
 // CONTRACTS (contratos terapêuticos)
 // ============================================================
 export const contracts = sqliteTable('contracts', {

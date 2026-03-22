@@ -1,177 +1,123 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
-import { PageHeader, Modal, EmptyState, LoadingState } from "@/components/common";
-import { useAppointments, usePatients } from "@/hooks/useData";
-import { Video, Copy, Check, Users, Clock, UserCheck, ExternalLink, Plus, PhoneOff } from "lucide-react";
+import { PageHeader, EmptyState } from "@/components/common";
+import { useNavigate } from "react-router-dom";
+import { Video, Copy, Check, Trash2, ExternalLink, Plus, Clock, Users } from "lucide-react";
 import { toast } from "sonner";
-import type { Appointment } from "@/types";
 
 const API = import.meta.env.VITE_API_URL || '';
+const auth = () => ({ Authorization: `Bearer ${localStorage.getItem('accessToken')}`, 'Content-Type': 'application/json' });
 
 export default function Teleconsulta() {
-  const { data: appointments } = useAppointments();
-  const { data: patients } = usePatients();
   const [sessions, setSessions] = useState<any[]>([]);
-  const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState("");
-  const [showNew, setShowNew] = useState(false);
-  const [selectedApt, setSelectedApt] = useState("");
+  const nav = useNavigate();
 
-  const fetchSessions = async () => {
+  const refresh = async () => {
     try {
-      const res = await fetch(`${API}/api/telehealth/my-sessions`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` }
-      });
-      if (res.ok) setSessions(await res.json());
+      const r = await fetch(`${API}/api/telehealth/my-sessions`, { headers: auth() });
+      const d = await r.json();
+      setSessions(d || []);
     } catch {}
+    setLoading(false);
   };
 
-  useEffect(() => { fetchSessions(); const i = setInterval(fetchSessions, 5000); return () => clearInterval(i); }, []);
+  useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
 
-  const createSession = async () => {
-    setCreating(true);
-    try {
-      const res = await fetch(`${API}/api/telehealth/sessions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-        body: JSON.stringify({ appointmentId: selectedApt || undefined }),
-      });
-      const data = await res.json();
-      toast.success("Sala criada!");
-      setShowNew(false);
-      fetchSessions();
-      // Open in new tab
-      window.open(data.hostUrl, '_blank');
-    } catch { toast.error("Erro ao criar sala"); }
-    setCreating(false);
+  const createRoom = async () => {
+    const r = await fetch(`${API}/api/telehealth/sessions`, { method: 'POST', headers: auth() });
+    const d = await r.json();
+    toast.success("Sala criada!");
+    refresh();
   };
 
-  const copyLink = (url: string, id: string) => {
-    navigator.clipboard.writeText(window.location.origin + url);
-    setCopied(id);
+  const endSession = async (id: string) => {
+    await fetch(`${API}/api/telehealth/sessions/${id}/end`, { method: 'POST', headers: auth() });
+    toast.success("Sessão encerrada"); refresh();
+  };
+
+  const copyLink = (id: string, type: 'patient' | 'pro') => {
+    const link = type === 'patient' 
+      ? `${window.location.origin}/teleconsulta/entrar/${id}`
+      : `${window.location.origin}/teleconsulta/sala/${id}`;
+    navigator.clipboard.writeText(link);
+    setCopied(`${id}-${type}`);
     setTimeout(() => setCopied(""), 2000);
-    toast.success("Link copiado!");
+    toast.success(type === 'patient' ? "Link do paciente copiado!" : "Link do profissional copiado!");
   };
-
-  const endSession = async (sessionId: string) => {
-    await fetch(`${API}/api/telehealth/sessions/${sessionId}/end`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-    });
-    fetchSessions();
-    toast.success("Sessão encerrada");
-  };
-
-  const todayAppts = appointments.filter(a =>
-    a.date === new Date().toISOString().split("T")[0] && !['concluido','cancelado'].includes(a.status)
-  );
 
   return (
     <MainLayout>
-      <PageHeader title="Teleconsulta" subtitle="Sessões de vídeo em tempo real" action={{ label: "Nova Sala", onClick: () => setShowNew(true) }} />
-
-      {/* Active sessions */}
-      {sessions.length > 0 && (
-        <div className="mb-8 page-enter">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> Salas ativas
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sessions.map(s => (
-              <div key={s.sessionId} className="glass-card p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Video size={18} className="text-emerald-500" />
-                    <span className="font-semibold">Sala {s.sessionId}</span>
-                  </div>
-                  <span className={`badge ${s.status === 'in_session' ? 'badge-success' : 'badge-warning'}`}>
-                    {s.status === 'in_session' ? 'Em sessão' : 'Aguardando'}
-                  </span>
-                </div>
-                {s.patientsWaiting > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 mb-3">
-                    <Users size={14} /> {s.patientsWaiting} paciente(s) na sala de espera
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <a href={`/teleconsulta/sala/${s.sessionId}`} target="_blank" rel="noopener"
-                    className="btn-primary flex items-center gap-1.5 text-xs h-8">
-                    <Video size={14} /> Entrar
-                  </a>
-                  <button onClick={() => copyLink(`/teleconsulta/entrar/${s.sessionId}`, s.sessionId)}
-                    className="btn-secondary flex items-center gap-1.5 text-xs h-8">
-                    {copied === s.sessionId ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    Link paciente
-                  </button>
-                  <button onClick={() => endSession(s.sessionId)}
-                    className="btn-ghost text-xs h-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10">
-                    <PhoneOff size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="glass-card p-6 mb-6 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #54423b, #3d302a)' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center"><Video size={24} className="text-white" /></div>
+          <div><h1 className="text-lg font-semibold text-white">Teleconsulta</h1><p className="text-sm text-white/60">Gerencie suas salas de videochamada</p></div>
         </div>
-      )}
-
-      {/* Today's appointments quick-start */}
-      {todayAppts.length > 0 && (
-        <div className="mb-8 page-enter">
-          <h3 className="text-sm font-semibold mb-3">Consultas de hoje — iniciar teleconsulta</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {todayAppts.map(a => (
-              <div key={a.id} className="glass-card p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-600/10 flex items-center justify-center shrink-0">
-                  <Clock size={16} className="text-brand-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{a.patientName}</p>
-                  <p className="text-xs text-surface-500">{a.time} · {a.duration}min</p>
-                </div>
-                <button onClick={() => { setSelectedApt(a.id); setShowNew(true); }}
-                  className="btn-primary h-8 text-xs flex items-center gap-1">
-                  <Video size={12} /> Iniciar
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sessions.length === 0 && todayAppts.length === 0 && (
-        <EmptyState icon={Video} title="Nenhuma sala ativa"
-          description="Crie uma sala de teleconsulta para atender seus pacientes por vídeo. O paciente recebe um link e entra pela sala de espera."
-          action={{ label: "Nova Sala", onClick: () => setShowNew(true) }} />
-      )}
-
-      {/* Info */}
-      <div className="glass-card p-6 mt-8 page-enter">
-        <h3 className="font-semibold mb-3">Como funciona</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-surface-600 dark:text-surface-400">
-          <div className="flex gap-3"><div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-600/10 flex items-center justify-center shrink-0 text-brand-600 font-bold text-xs">1</div>
-            <div><p className="font-medium text-foreground">Crie a sala</p><p className="text-xs mt-0.5">Clique em "Nova Sala" e opcionalmente vincule a uma consulta.</p></div></div>
-          <div className="flex gap-3"><div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-600/10 flex items-center justify-center shrink-0 text-brand-600 font-bold text-xs">2</div>
-            <div><p className="font-medium text-foreground">Envie o link</p><p className="text-xs mt-0.5">Copie o link do paciente e envie por WhatsApp ou email.</p></div></div>
-          <div className="flex gap-3"><div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-600/10 flex items-center justify-center shrink-0 text-brand-600 font-bold text-xs">3</div>
-            <div><p className="font-medium text-foreground">Admita e atenda</p><p className="text-xs mt-0.5">O paciente espera na sala de espera. Você admite e a videochamada inicia.</p></div></div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/80">{sessions.length} salas</span>
+          <button onClick={createRoom} className="h-9 px-4 rounded-xl text-sm font-medium flex items-center gap-2 bg-white text-brand-800">
+            <Plus size={14} /> Nova Sala
+          </button>
         </div>
       </div>
 
-      <Modal open={showNew} onClose={() => setShowNew(false)} title="Nova Sala de Teleconsulta" size="sm">
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-surface-500 mb-1 block">Vincular a consulta (opcional)</label>
-            <select value={selectedApt} onChange={e => setSelectedApt(e.target.value)} className="input-premium w-full">
-              <option value="">Nenhuma — sala avulsa</option>
-              {todayAppts.map(a => <option key={a.id} value={a.id}>{a.time} — {a.patientName}</option>)}
-            </select>
-          </div>
-          <p className="text-xs text-surface-500">A sala usa Jitsi Meet (gratuito, sem cadastro). Vídeo, áudio, chat e compartilhamento de tela inclusos.</p>
-          <button onClick={createSession} disabled={creating} className="btn-primary w-full h-11">
-            {creating ? "Criando..." : "Criar Sala e Entrar"}
-          </button>
+      {sessions.length === 0 ? (
+        <EmptyState icon={Video} title="Nenhuma sala" description="Crie uma sala de teleconsulta para atender seus pacientes" action={{ label: "Nova Sala", onClick: createRoom }} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 page-enter">
+          {sessions.map(s => (
+            <div key={s.id} className="glass-card overflow-hidden">
+              <div className="p-4 border-b" style={{ borderColor: 'hsl(var(--border))' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-600/10 flex items-center justify-center">
+                      <Video size={14} className="text-brand-600 dark:text-brand-300" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{s.id?.slice(0, 8)}</p>
+                      <p className="text-[10px] text-surface-500">Sala de Reunião</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-surface-100 text-surface-500 dark:bg-surface-800'}`}>
+                    {s.status === 'active' ? 'Ativa' : 'Encerrada'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-surface-400">{new Date(s.createdAt || Date.now()).toLocaleString('pt-BR')}</p>
+                {s.patients?.length > 0 && (
+                  <div className="flex items-center gap-1 mt-2">
+                    <Users size={10} className="text-surface-400" />
+                    <span className="text-[10px] text-surface-500">{s.patients.length} participante(s)</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => copyLink(s.id, 'patient')}
+                    className="h-8 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 bg-brand-600 text-white dark:bg-brand-300 dark:text-brand-900">
+                    {copied === `${s.id}-patient` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Paciente</>}
+                  </button>
+                  <button onClick={() => copyLink(s.id, 'pro')}
+                    className="h-8 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1.5 border" style={{ borderColor: 'hsl(var(--border))' }}>
+                    {copied === `${s.id}-pro` ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Link Profissional</>}
+                  </button>
+                </div>
+                <button onClick={() => nav(`/teleconsulta/sala/${s.id}`)}
+                  className="w-full h-8 rounded-lg text-[11px] flex items-center justify-center gap-1.5 border text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-600/5 transition-all" style={{ borderColor: 'hsl(var(--border))' }}>
+                  <ExternalLink size={10} /> Entrar como profissional
+                </button>
+                {s.status === 'active' && (
+                  <button onClick={() => endSession(s.id)}
+                    className="w-full h-7 rounded-lg text-[10px] flex items-center justify-center gap-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/5 transition-all">
+                    <Trash2 size={10} /> Encerrar Sala
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      </Modal>
+      )}
     </MainLayout>
   );
 }

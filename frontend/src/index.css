@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 30 10% 95%;    /* #f5f2ee off-white */
+    --foreground: 15 10% 14%;    /* #2a2523 preto suave */
+    --card: 30 20% 92%;          /* branco quente */
+    --card-foreground: 15 10% 14%;
+    --popover: 30 20% 92%;
+    --popover-foreground: 15 10% 14%;
+    --primary: 18 20% 28%;       /* #54423b marrom */
+    --primary-foreground: 30 25% 88%;
+    --secondary: 28 25% 88%;     /* #e8d8c3 bege */
+    --secondary-foreground: 18 20% 28%;
+    --muted: 28 15% 88%;
+    --muted-foreground: 20 8% 50%;
+    --accent: 28 25% 88%;
+    --accent-foreground: 18 20% 28%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 25 12% 82%;
+    --input: 25 12% 82%;
+    --ring: 18 20% 28%;
+    --radius: 0.625rem;
+  }
+  .dark {
+    --background: 15 12% 8%;     /* fundo escuro quente */
+    --foreground: 30 15% 88%;
+    --card: 15 10% 12%;
+    --card-foreground: 30 15% 88%;
+    --popover: 15 10% 12%;
+    --popover-foreground: 30 15% 88%;
+    --primary: 28 25% 70%;       /* marrom claro no dark */
+    --primary-foreground: 15 12% 8%;
+    --secondary: 15 10% 18%;
+    --secondary-foreground: 30 15% 80%;
+    --muted: 15 8% 18%;
+    --muted-foreground: 25 10% 55%;
+    --accent: 15 10% 18%;
+    --accent-foreground: 30 15% 80%;
+    --destructive: 0 63% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 15 8% 20%;
+    --input: 15 8% 20%;
+    --ring: 28 25% 60%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  *:focus-visible { @apply outline-2 outline-offset-2 outline-[#54423b] dark:outline-[#c4a882] rounded-lg; }
+}
+
+@layer utilities {
+  .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0; }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .font-display { font-family: 'Playfair Display', Georgia, serif; }
+}
+
+@layer components {
+  .glass-card {
+    @apply border rounded-2xl;
+    background: hsl(var(--card));
+    border-color: hsl(var(--border));
+    box-shadow: 0 1px 3px rgba(84,66,59,0.04), 0 1px 2px rgba(84,66,59,0.06);
+  }
+  .glass-sidebar {
+    background: #2a2523;
+    color: #e8d8c3;
+  }
+  .stat-card {
+    @apply glass-card p-5 transition-all duration-200;
+  }
+  .stat-card:hover {
+    box-shadow: 0 4px 16px rgba(84,66,59,0.1);
+    transform: translateY(-2px);
+  }
+  .input-premium {
+    @apply h-10 rounded-xl px-3.5 text-sm transition-all duration-200;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+  }
+  .input-premium:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(84,66,59,0.12);
+    border-color: #54423b;
+  }
+  .input-premium::placeholder { color: #b8b0aa; }
+  .dark .input-premium { background: hsl(15 10% 14%); border-color: hsl(15 8% 22%); }
+  .dark .input-premium:focus { box-shadow: 0 0 0 3px rgba(196,168,130,0.15); border-color: #c4a882; }
+  .dark .input-premium::placeholder { color: hsl(25 10% 40%); }
+
+  .btn-primary {
+    @apply h-10 px-5 rounded-xl font-medium text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    background: #54423b;
+    color: #f5f2ee;
+  }
+  .btn-primary:hover { background: #3d302a; box-shadow: 0 0 20px rgba(84,66,59,0.2); }
+  .dark .btn-primary { background: #c4a882; color: #1a1412; }
+  .dark .btn-primary:hover { background: #d4bc9a; }
+
+  .btn-secondary {
+    @apply h-10 px-5 rounded-xl font-medium text-sm transition-all duration-200;
+    background: #e8d8c3;
+    color: #54423b;
+    border: 1px solid hsl(var(--border));
+  }
+  .btn-secondary:hover { background: #dcc9b0; }
+  .dark .btn-secondary { background: hsl(15 10% 18%); color: hsl(30 15% 80%); border-color: hsl(15 8% 25%); }
+  .dark .btn-secondary:hover { background: hsl(15 10% 22%); }
+
+  .btn-ghost {
+    @apply h-10 px-4 rounded-xl font-medium text-sm transition-all duration-200;
+    color: #54423b;
+  }
+  .btn-ghost:hover { background: rgba(84,66,59,0.06); }
+  .dark .btn-ghost { color: #b8b0aa; }
+  .dark .btn-ghost:hover { background: rgba(232,216,195,0.06); }
+
+  .badge { @apply inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium; }
+  .badge-success { background: #e8f5e9; color: #2e7d32; }
+  .dark .badge-success { background: rgba(46,125,50,0.1); color: #81c784; }
+  .badge-warning { background: #fff3e0; color: #e65100; }
+  .dark .badge-warning { background: rgba(230,81,0,0.1); color: #ffb74d; }
+  .badge-danger { background: #ffebee; color: #c62828; }
+  .dark .badge-danger { background: rgba(198,40,40,0.1); color: #ef9a9a; }
+  .badge-info { background: #e3f2fd; color: #1565c0; }
+  .dark .badge-info { background: rgba(21,101,192,0.1); color: #90caf9; }
+  .badge-neutral { background: #f5f2ee; color: #54423b; }
+  .dark .badge-neutral { background: hsl(15 10% 18%); color: #b8b0aa; }
+  .badge-brand { background: rgba(84,66,59,0.08); color: #54423b; }
+  .dark .badge-brand { background: rgba(196,168,130,0.1); color: #c4a882; }
+
+  .page-enter { animation: slideUp 0.35s ease-out; }
+  @keyframes slideUp { 0% { opacity:0; transform:translateY(12px); } 100% { opacity:1; transform:translateY(0); } }
+
+  .table-premium { @apply w-full text-sm; }
+  .table-premium thead { background: rgba(84,66,59,0.03); }
+  .dark .table-premium thead { background: rgba(232,216,195,0.03); }
+  .table-premium th { @apply px-4 py-3 text-left text-xs font-medium uppercase tracking-wider; color: #b8b0aa; }
+  .table-premium td { @apply px-4 py-3.5; color: hsl(var(--foreground)); border-top: 1px solid hsl(var(--border)); }
+  .table-premium tbody tr { @apply transition-colors; }
+  .table-premium tbody tr:hover { background: rgba(84,66,59,0.02); }
+  .dark .table-premium tbody tr:hover { background: rgba(232,216,195,0.02); }
+}
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#b8b0aa40; border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:#b8b0aa60; }
+.skip-link { @apply sr-only; }
+.skip-link:focus { @apply not-sr-only fixed top-2 left-2 z-[9999] text-white px-4 py-2 rounded-xl text-sm; background:#54423b; }

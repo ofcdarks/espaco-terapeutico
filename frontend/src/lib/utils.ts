@@ -19,11 +19,13 @@ export function formatDate(date: string): string {
   } catch { return ""; }
 }
 export function getInitials(name: string): string {
+  if (!name) return "?";
   return name.split(" ").filter(Boolean).slice(0, 2).map(n => n[0]).join("").toUpperCase();
 }
 
 // ── P1 FIX: Input masks ────────────────────────────────────
 export function maskCpf(v: string): string {
+  if (!v) return "";
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 3) return d;
   if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
@@ -31,6 +33,7 @@ export function maskCpf(v: string): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 export function maskPhone(v: string): string {
+  if (!v) return "";
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : "";
   if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;

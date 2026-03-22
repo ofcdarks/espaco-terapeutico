@@ -25,11 +25,12 @@ import CadastroPaciente from "./pages/CadastroPaciente";
 import AgendaPublica from "./pages/AgendaPublica";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
 import NotFound from "./pages/NotFound";
+import { OnboardingGate } from "./components/OnboardingGate";
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } } });
 
 function P({ children }: { children: React.ReactNode }) {
-  return <ProtectedRoute><ErrorBoundary>{children}</ErrorBoundary></ProtectedRoute>;
+  return <ProtectedRoute><OnboardingGate><ErrorBoundary>{children}</ErrorBoundary></OnboardingGate></ProtectedRoute>;
 }
 
 export default function App() {

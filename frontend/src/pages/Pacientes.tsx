@@ -46,7 +46,7 @@ export default function Pacientes() {
 
   return (
     <MainLayout>
-      <PageHeader title="Meus Pacientes" subtitle={`Gerencie seus pacientes (${patients.length} pacientes)`}
+      <PageHeader title="Meus Pacientes" subtitle={`Gerencie seus pacientes (${patients?.length || 0} pacientes)`}
         action={{ label: "Novo Paciente", onClick: openNew }}>
         <div className="flex items-center gap-2">
           <button onClick={exportCsv} className="btn-ghost h-8 text-xs flex items-center gap-1.5"><Download size={12} /> Exportar</button>

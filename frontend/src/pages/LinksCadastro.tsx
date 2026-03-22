@@ -23,7 +23,7 @@ export default function LinksCadastro() {
 
   const createLink = async () => {
     try {
-      const r = await fetch(`${API}/api/registration-links`, { method: 'POST', headers: auth() });
+      const r = await fetch(`${API}/api/registration-links`, { method: 'POST', headers: auth(), body: JSON.stringify({}) });
       if (r.ok) {
         const d = await r.json();
         // Generate URL client-side (backend may not know the correct origin)

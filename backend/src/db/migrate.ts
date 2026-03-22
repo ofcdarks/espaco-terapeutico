@@ -18,6 +18,7 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
     category TEXT NOT NULL DEFAULT 'psicologo',
     phone TEXT DEFAULT '',
     bio TEXT,
@@ -337,4 +338,28 @@ db.exec(`
 `);
 
 console.log('Database ready.');
+
+// ── Add missing columns to existing tables (safe to run multiple times) ──
+const alterStatements = [
+  "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
+  "ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN two_factor_secret TEXT",
+  "ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN stripe_customer_id TEXT",
+  "ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0",
+  "ALTER TABLE plans ADD COLUMN stripe_price_id TEXT",
+  "ALTER TABLE user_subscriptions ADD COLUMN stripe_subscription_id TEXT",
+  "ALTER TABLE user_subscriptions ADD COLUMN stripe_price_id TEXT",
+];
+
+for (const stmt of alterStatements) {
+  try { db.exec(stmt); } catch (e: any) {
+    // "duplicate column name" is expected if column already exists
+    if (!e.message?.includes('duplicate column')) {
+      console.warn(`Note: ${e.message}`);
+    }
+  }
+}
+
+console.log('Migrations applied.');
 db.close();

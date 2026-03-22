@@ -26,19 +26,19 @@ import NotFound from "./pages/NotFound";
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 
+// Single instance — wraps everything, only checks once
 function OnboardingGate({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const alreadyDone = localStorage.getItem("onboarding_done") === "true";
-  const [dismissed, setDismissed] = useState(alreadyDone || !!(user as any)?.onboardingComplete);
+  const { user, isAuthenticated } = useAuth();
+  const [done, setDone] = useState(() => localStorage.getItem("onboarding_done") === "true");
 
-  if (!dismissed && user) {
-    return <OnboardingWizard onComplete={() => setDismissed(true)} />;
+  if (isAuthenticated && !done) {
+    return <OnboardingWizard onComplete={() => { localStorage.setItem("onboarding_done", "true"); setDone(true); }} />;
   }
   return <>{children}</>;
 }
 
 const P = ({ children }: { children: React.ReactNode }) => (
-  <ProtectedRoute><ErrorBoundary><OnboardingGate>{children}</OnboardingGate></ErrorBoundary></ProtectedRoute>
+  <ProtectedRoute><ErrorBoundary>{children}</ErrorBoundary></ProtectedRoute>
 );
 
 export default function App() {
@@ -47,28 +47,30 @@ export default function App() {
       <QueryClientProvider client={qc}>
         <AuthProvider>
           <Toaster position="top-right" toastOptions={{ style: { borderRadius: "12px", fontSize: "13px", border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))" } }} />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/teleconsulta/entrar/:sessionId" element={<PatientWaiting />} />
-              <Route path="/portal/:patientId" element={<Portal />} />
-              <Route path="/assinar/:id" element={<AssinarContrato />} />
-              <Route path="/" element={<P><Dashboard /></P>} />
-              <Route path="/agenda" element={<P><Agenda /></P>} />
-              <Route path="/pacientes" element={<P><Pacientes /></P>} />
-              <Route path="/pacientes/:id" element={<P><PacienteDetalhe /></P>} />
-              <Route path="/prontuarios" element={<P><Prontuarios /></P>} />
-              <Route path="/financeiro" element={<P><Financeiro /></P>} />
-              <Route path="/documentos" element={<P><Documentos /></P>} />
-              <Route path="/contratos" element={<P><Contratos /></P>} />
-              <Route path="/relatorios" element={<P><Relatorios /></P>} />
-              <Route path="/configuracoes" element={<P><Configuracoes /></P>} />
-              <Route path="/teleconsulta" element={<P><Teleconsulta /></P>} />
-              <Route path="/teleconsulta/sala/:sessionId" element={<P><VideoRoom /></P>} />
-              <Route path="/admin" element={<P><Admin /></P>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <OnboardingGate>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/teleconsulta/entrar/:sessionId" element={<PatientWaiting />} />
+                <Route path="/portal/:patientId" element={<Portal />} />
+                <Route path="/assinar/:id" element={<AssinarContrato />} />
+                <Route path="/" element={<P><Dashboard /></P>} />
+                <Route path="/agenda" element={<P><Agenda /></P>} />
+                <Route path="/pacientes" element={<P><Pacientes /></P>} />
+                <Route path="/pacientes/:id" element={<P><PacienteDetalhe /></P>} />
+                <Route path="/prontuarios" element={<P><Prontuarios /></P>} />
+                <Route path="/financeiro" element={<P><Financeiro /></P>} />
+                <Route path="/documentos" element={<P><Documentos /></P>} />
+                <Route path="/contratos" element={<P><Contratos /></P>} />
+                <Route path="/relatorios" element={<P><Relatorios /></P>} />
+                <Route path="/configuracoes" element={<P><Configuracoes /></P>} />
+                <Route path="/teleconsulta" element={<P><Teleconsulta /></P>} />
+                <Route path="/teleconsulta/sala/:sessionId" element={<P><VideoRoom /></P>} />
+                <Route path="/admin" element={<P><Admin /></P>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </OnboardingGate>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

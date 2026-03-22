@@ -22,6 +22,7 @@ import Contratos from "./pages/Contratos";
 import AssinarContrato from "./pages/AssinarContrato";
 import LinksCadastro from "./pages/LinksCadastro";
 import CadastroPaciente from "./pages/CadastroPaciente";
+import AgendarPublico from "./pages/AgendarPublico";
 import AgendaPublica from "./pages/AgendaPublica";
 import MensagensAgendadas from "./pages/MensagensAgendadas";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="/portal/:token" element={<Portal />} />
               <Route path="/assinar/:id" element={<AssinarContrato />} />
               <Route path="/cadastro/:linkId" element={<CadastroPaciente />} />
+              <Route path="/agendar/:slug" element={<AgendarPublico />} />
               <Route path="/" element={<P><Dashboard /></P>} />
               <Route path="/agenda" element={<P><Agenda /></P>} />
               <Route path="/pacientes" element={<P><Pacientes /></P>} />

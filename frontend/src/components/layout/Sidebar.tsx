@@ -21,7 +21,7 @@ const NAV = [
   { to: "/contratos", icon: FileSignature, label: "Contratos" },
   { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
   { to: "/links-cadastro", icon: Link2, label: "Links Cadastro" },
-  { to: "/agenda-publica", icon: CalendarClock, label: "Agenda Pública" },
+  { to: "/agenda-publica", icon: CalendarClock, label: "Agenda Online" },
   { to: "/mensagens", icon: MessageSquare, label: "Mensagens" },
   { to: "/emails", icon: Mail, label: "E-mails" },
 ];

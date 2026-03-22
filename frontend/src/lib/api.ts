@@ -403,27 +403,6 @@ export const twofaApi = {
   async disable(token: string) { return apiFetch('/api/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ token }) }); },
 };
 
-// ── Stripe API ──────────────────────────────────────────────
-export const stripeApi = {
-  async checkout(planId: string) { return apiFetch<{ url: string }>('/api/stripe/checkout', { method: 'POST', body: JSON.stringify({ planId }) }); },
-  async getSubscription() { return apiFetch<any>('/api/stripe/subscription'); },
-  async getPlans() { return apiFetch<any[]>('/api/stripe/plans'); },
-};
-
-// ── CSV API ─────────────────────────────────────────────────
-export const csvApi = {
-  exportUrl: `${API_BASE}/api/csv/patients/export`,
-  async importCsv(csv: string) { return apiFetch<{ imported: number }>('/api/csv/patients/import', { method: 'POST', body: JSON.stringify({ csv }) }); },
-};
-
-// ── Portal API ──────────────────────────────────────────────
-export const portalApi = {
-  async generateLink(patientId: string, ownerId: string) {
-    return apiFetch<{ token: string; url: string }>('/api/portal/generate-link', { method: 'POST', body: JSON.stringify({ patientId, ownerId }) });
-  },
-};
-
-// ── Contracts API ───────────────────────────────────────────
 export const contractsApi = createCrudApi<any>('/api/contracts');
 export const contractTemplatesApi = createCrudApi<any>('/api/contract-templates');
 export const contractExtras = {

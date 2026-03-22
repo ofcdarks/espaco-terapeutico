@@ -28,6 +28,7 @@ export default function Prontuarios() {
   const [editing, setEditing] = useState<ConsultationRecord|null>(null); const [deleteTarget, setDeleteTarget] = useState<string|null>(null);
   const [cidSearch, setCidSearch] = useState(""); const [showCid, setShowCid] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [form, setForm] = useState({ patientId:"", date: new Date().toISOString().split("T")[0], diagnosis:"", treatment:"", observations:"", prescriptions:"" });
 
   const filtered = records.filter(r => r.patientName?.toLowerCase().includes(dSearch.toLowerCase()) || r.diagnosis?.toLowerCase().includes(dSearch.toLowerCase()));
@@ -53,12 +54,45 @@ export default function Prontuarios() {
       });
       toast.success("Análise concluída");
       // Show analysis in a simple alert for now
-      const text = `Resumo: ${analysis.summary}\n\nEstado Emocional: ${analysis.emotionalState}\n\nSugestões: ${(analysis.suggestedFollowUp||[]).join(", ")}\n\nNotas: ${analysis.therapeuticNotes}`;
-      alert(text); // In production, this would be a proper modal
+      
+      setAnalysisResult(analysis);
     } catch (err: any) { toast.error(err.message || "Erro na análise IA"); }
     setAnalyzing(false);
   };
 
+      {/* AI Analysis Modal */}
+      <Modal open={!!analysisResult} onClose={() => setAnalysisResult(null)} title="Análise IA da Sessão" size="lg">
+        {analysisResult && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-600/10">
+              <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Resumo</h4>
+              <p className="text-sm">{analysisResult.summary}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Estado Emocional</h4>
+                <p className="text-sm font-medium">{analysisResult.emotionalState}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Pré-Diagnóstico</h4>
+                <p className="text-sm font-medium">{analysisResult.preDiagnosis || "—"}</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+              <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Notas Clínicas</h4>
+              <p className="text-sm">{analysisResult.therapeuticNotes}</p>
+            </div>
+            {analysisResult.suggestedFollowUp?.length > 0 && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Sugestões</h4>
+                <ul className="text-sm space-y-1">{analysisResult.suggestedFollowUp.map((s: string, i: number) => (
+                  <li key={i}>• {s}</li>
+                ))}</ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
   if (loading) return <MainLayout><PageHeader title="Prontuários" /><TableSkeleton /></MainLayout>;
   return (
     <MainLayout>
@@ -134,6 +168,39 @@ export default function Prontuarios() {
             <textarea value={form.prescriptions} onChange={e => setForm(f => ({...f, prescriptions: e.target.value}))} className="input-premium w-full h-16 py-2 resize-none" /></div>
           <div className="flex justify-end gap-3 pt-2"><button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">{editing ? "Salvar" : "Criar"}</button></div>
         </form>
+      </Modal>
+      {/* AI Analysis Modal */}
+      <Modal open={!!analysisResult} onClose={() => setAnalysisResult(null)} title="Análise IA da Sessão" size="lg">
+        {analysisResult && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-600/10">
+              <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Resumo</h4>
+              <p className="text-sm">{analysisResult.summary}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Estado Emocional</h4>
+                <p className="text-sm font-medium">{analysisResult.emotionalState}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Pré-Diagnóstico</h4>
+                <p className="text-sm font-medium">{analysisResult.preDiagnosis || "—"}</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-850">
+              <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Notas Clínicas</h4>
+              <p className="text-sm">{analysisResult.therapeuticNotes}</p>
+            </div>
+            {analysisResult.suggestedFollowUp?.length > 0 && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10">
+                <h4 className="text-xs font-semibold text-surface-500 uppercase mb-1">Sugestões</h4>
+                <ul className="text-sm space-y-1">{analysisResult.suggestedFollowUp.map((s: string, i: number) => (
+                  <li key={i}>• {s}</li>
+                ))}</ul>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </MainLayout>);
 }

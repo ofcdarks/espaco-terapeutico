@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -28,11 +28,12 @@ const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, ret
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  useEffect(() => {
-    if (user && !(user as any).onboardingComplete) setShowOnboarding(true);
-  }, [user]);
-  if (showOnboarding) return <OnboardingWizard onComplete={() => setShowOnboarding(false)} />;
+  const alreadyDone = localStorage.getItem("onboarding_done") === "true";
+  const [dismissed, setDismissed] = useState(alreadyDone || !!(user as any)?.onboardingComplete);
+
+  if (!dismissed && user) {
+    return <OnboardingWizard onComplete={() => setDismissed(true)} />;
+  }
   return <>{children}</>;
 }
 
@@ -48,13 +49,10 @@ export default function App() {
           <Toaster position="top-right" toastOptions={{ style: { borderRadius: "12px", fontSize: "13px", border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))" } }} />
           <BrowserRouter>
             <Routes>
-              {/* Public */}
               <Route path="/auth" element={<Auth />} />
               <Route path="/teleconsulta/entrar/:sessionId" element={<PatientWaiting />} />
               <Route path="/portal/:patientId" element={<Portal />} />
               <Route path="/assinar/:id" element={<AssinarContrato />} />
-
-              {/* Protected */}
               <Route path="/" element={<P><Dashboard /></P>} />
               <Route path="/agenda" element={<P><Agenda /></P>} />
               <Route path="/pacientes" element={<P><Pacientes /></P>} />
@@ -68,7 +66,6 @@ export default function App() {
               <Route path="/teleconsulta" element={<P><Teleconsulta /></P>} />
               <Route path="/teleconsulta/sala/:sessionId" element={<P><VideoRoom /></P>} />
               <Route path="/admin" element={<P><Admin /></P>} />
-
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

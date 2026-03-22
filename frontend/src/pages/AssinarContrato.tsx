@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { FileSignature, Check, AlertCircle, Loader2 } from "lucide-react";
@@ -21,9 +22,9 @@ export default function AssinarContrato() {
     e.preventDefault(); setSigning(true);
     try {
       const res = await fetch(`${API}/api/contracts/${id}/sign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientName: name, cpf: cpf.replace(/\D/g, '') }) });
-      if (!res.ok) { const err = await res.json(); alert(err.error); setSigning(false); return; }
+      if (!res.ok) { const err = await res.json(); toast.error(err.error); setSigning(false); return; }
       setSigned(true);
-    } catch { alert("Erro ao assinar"); }
+    } catch { toast.error("Erro ao assinar"); }
     setSigning(false);
   };
 

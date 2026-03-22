@@ -13,7 +13,10 @@ export default function LinksCadastro() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const refresh = async () => {
-    try { const r = await fetch(`${API}/api/registration-links`, { headers: auth() }); setLinks(await r.json()); } catch {}
+    try {
+      const r = await fetch(`${API}/api/registration-links`, { headers: auth() });
+      if (r.ok) { const d = await r.json(); setLinks(Array.isArray(d) ? d : []); }
+    } catch {}
     setLoading(false);
   };
   useEffect(() => { refresh(); }, []);

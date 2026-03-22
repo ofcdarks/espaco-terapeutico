@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { data: appts } = useQuery({ queryKey: ["appointments"], queryFn: () => appointmentsApi.list(200) });
 
   const today = new Date().toISOString().split("T")[0];
-  const todayAppts = (appts?.data || []).filter((a: any) => a.date === today);
+  const todayAppts = (Array.isArray(appts?.data) ? appts.data : Array.isArray(appts) ? appts : []).filter((a: any) => a.date === today);
   const pendingPayments = stats?.pendingRevenue || 0;
 
   const topCards = [

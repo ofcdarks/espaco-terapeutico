@@ -30,6 +30,7 @@ import { twofaRoutes } from './routes/twofa.js';
 import { portalRoutes } from './routes/portal.js';
 import { csvRoutes } from './routes/csv.js';
 import { contractRoutes } from './routes/contracts.js';
+import { signalingRoutes } from './routes/signaling.js';
 import { registerCronJobs } from './cron/index.js';
 import './db/index.js';
 
@@ -93,6 +94,7 @@ await app.register(twofaRoutes);
 await app.register(portalRoutes);
 await app.register(csvRoutes);
 await app.register(contractRoutes);
+await app.register(signalingRoutes);
 
 app.get('/api/health', async () => ({
   status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime(),
@@ -100,7 +102,7 @@ app.get('/api/health', async () => ({
 
 const STATIC_DIR = process.env.STATIC_DIR || join(__dirname, '..', 'public');
 if (existsSync(STATIC_DIR)) {
-  await app.register(fastifyStatic, { root: STATIC_DIR, prefix: '/', wildcard: false, decorateReply: false });
+  await app.register(fastifyStatic, { root: STATIC_DIR, prefix: '/', wildcard: false, decorateReply: true });
   app.setNotFoundHandler(async (req, reply) => {
     if (req.url.startsWith('/api/')) return reply.status(404).send({ error: 'Endpoint não encontrado' });
     return reply.sendFile('index.html', STATIC_DIR);

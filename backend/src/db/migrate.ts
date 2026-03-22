@@ -119,6 +119,7 @@ db.exec(`
     value REAL NOT NULL DEFAULT 0,
     validity INTEGER NOT NULL DEFAULT 30,
     is_active INTEGER NOT NULL DEFAULT 1,
+    stripe_price_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -350,6 +351,7 @@ const alterStatements = [
   "ALTER TABLE plans ADD COLUMN stripe_price_id TEXT",
   "ALTER TABLE user_subscriptions ADD COLUMN stripe_subscription_id TEXT",
   "ALTER TABLE user_subscriptions ADD COLUMN stripe_price_id TEXT",
+  "ALTER TABLE packages ADD COLUMN stripe_price_id TEXT",
 ];
 
 for (const stmt of alterStatements) {

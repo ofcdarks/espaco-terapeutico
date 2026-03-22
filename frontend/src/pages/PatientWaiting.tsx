@@ -1,115 +1,180 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Clock, Video, Loader2, AlertCircle } from "lucide-react";
+import { Video, Mic, MicOff, VideoOff, PhoneOff, Loader2, AlertCircle } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || '';
-const JITSI_DOMAIN = import.meta.env.VITE_JITSI_DOMAIN || 'meet.jit.si';
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.services.mozilla.com' },
+];
 
 export default function PatientWaiting() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const [step, setStep] = useState<'name' | 'waiting' | 'video' | 'ended' | 'error'>('name');
-  const [name, setName] = useState('');
-  const [patientId, setPatientId] = useState('');
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const pollRef = useRef<number | null>(null);
+  const iceIdxRef = useRef(0);
 
-  const joinRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API}/api/telehealth/sessions/${sessionId}/join`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) { setStep('error'); return; }
-      const data = await res.json();
-      setPatientId(data.patientId);
-      setStep('waiting');
-    } catch { setStep('error'); }
-  };
+  const [step, setStep] = useState<'joining' | 'waiting' | 'connected' | 'ended' | 'error'>('joining');
+  const [muted, setMuted] = useState(false);
+  const [camOff, setCamOff] = useState(false);
 
-  // Poll for admission
   useEffect(() => {
-    if (step !== 'waiting' || !patientId) return;
-    const poll = setInterval(async () => {
+    let active = true;
+
+    const connect = async () => {
+      // Wait for host offer
+      const waitForOffer = async (): Promise<any> => {
+        for (let i = 0; i < 120; i++) { // 2 min timeout
+          if (!active) return null;
+          try {
+            const res = await fetch(`${API}/api/signal/${sessionId}/offer`);
+            const data = await res.json();
+            if (data.offer) return data.offer;
+          } catch {}
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        return null;
+      };
+
+      setStep('waiting');
+      const offer = await waitForOffer();
+      if (!offer || !active) { if (active) setStep('error'); return; }
+
       try {
-        const res = await fetch(`${API}/api/telehealth/sessions/${sessionId}/status/${patientId}`);
-        const data = await res.json();
-        if (data.ended) { setStep('ended'); clearInterval(poll); }
-        else if (data.admitted) { setStep('video'); clearInterval(poll); }
-      } catch {}
-    }, 2000);
-    return () => clearInterval(poll);
-  }, [step, patientId, sessionId]);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
 
-  const roomName = `espaco-${sessionId}`;
-  const displayName = encodeURIComponent(name);
-  const jitsiUrl = `https://${JITSI_DOMAIN}/${roomName}#userInfo.displayName="${displayName}"&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.prejoinPageEnabled=false`;
+        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        pcRef.current = pc;
 
-  if (step === 'name') return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#2a2523' }}>
-      <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(196,168,130,0.2)' }}>
-          <Video size={28} style={{ color: '#c4a882' }} />
-        </div>
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#e8d8c3' }}>Teleconsulta</h1>
-        <p className="text-sm mb-8" style={{ color: '#b8b0aa' }}>Informe seu nome para entrar na sala de espera</p>
-        <form onSubmit={joinRoom} className="space-y-4">
-          <input value={name} onChange={e => setName(e.target.value)}
-            className="w-full h-12 rounded-xl px-4 text-sm focus:outline-none"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#e8d8c3' }}
-            placeholder="Seu nome completo" required autoFocus />
-          <button type="submit" className="w-full h-12 rounded-xl font-medium text-sm transition-all"
-            style={{ background: '#54423b', color: '#f5f2ee' }}>
-            Entrar na Sala de Espera
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+        stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
-  if (step === 'waiting') return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#2a2523' }}>
+        pc.ontrack = (e) => {
+          if (remoteVideoRef.current && e.streams[0]) {
+            remoteVideoRef.current.srcObject = e.streams[0];
+            setStep('connected');
+          }
+        };
+        pc.onicecandidate = async (e) => {
+          if (e.candidate) {
+            await fetch(`${API}/api/signal/${sessionId}/ice/guest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ candidate: e.candidate.toJSON() }) }).catch(() => {});
+          }
+        };
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') setStep('ended');
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await fetch(`${API}/api/signal/${sessionId}/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: pc.localDescription?.toJSON() }) });
+
+        // Poll for host ICE candidates
+        pollRef.current = window.setInterval(async () => {
+          try {
+            const res = await fetch(`${API}/api/signal/${sessionId}/ice/guest?from=${iceIdxRef.current}`);
+            const data = await res.json();
+            for (const c of data.candidates) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+            }
+            iceIdxRef.current = data.total;
+          } catch {}
+        }, 1000);
+
+      } catch {
+        if (active) setStep('error');
+      }
+    };
+
+    connect();
+    return () => { active = false; if (pollRef.current) clearInterval(pollRef.current); pcRef.current?.close(); streamRef.current?.getTracks().forEach(t => t.stop()); };
+  }, [sessionId]);
+
+  const toggleMute = () => { streamRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; }); setMuted(!muted); };
+  const toggleCam = () => { streamRef.current?.getVideoTracks().forEach(t => { t.enabled = !t.enabled; }); setCamOff(!camOff); };
+  const hangUp = () => { pcRef.current?.close(); streamRef.current?.getTracks().forEach(t => t.stop()); if (pollRef.current) clearInterval(pollRef.current); setStep('ended'); };
+
+  // Waiting screen
+  if (step === 'joining' || step === 'waiting') return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1a1412' }}>
       <div className="text-center">
         <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(196,168,130,0.1)' }}>
-          <Clock size={32} style={{ color: '#c4a882' }} />
+          <Video size={32} style={{ color: '#c4a882' }} />
         </div>
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#e8d8c3' }}>Sala de Espera</h1>
-        <p className="text-sm mb-2" style={{ color: '#b8b0aa' }}>Olá, <span style={{ color: '#e8d8c3', fontWeight: 500 }}>{name}</span>!</p>
-        <p className="text-sm mb-8" style={{ color: '#b8b0aa' }}>Aguarde o profissional admitir você.</p>
-        <Loader2 size={20} className="animate-spin mx-auto" style={{ color: '#c4a882' }} />
-        <div className="mt-8 p-4 rounded-xl max-w-xs mx-auto text-left" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <p className="text-xs mb-2" style={{ color: '#b8b0aa' }}>Dicas:</p>
-          <ul className="text-xs space-y-1" style={{ color: '#8b7f77' }}>
-            <li>• Local tranquilo e bem iluminado</li>
-            <li>• Use fones de ouvido</li>
-            <li>• Feche apps desnecessários</li>
+        <h1 className="text-xl font-semibold mb-2" style={{ color: '#e8d8c3' }}>
+          {step === 'joining' ? 'Conectando...' : 'Aguardando profissional...'}
+        </h1>
+        <p className="text-sm mb-8" style={{ color: '#8b7f77' }}>
+          {step === 'joining' ? 'Preparando sua conexão' : 'O profissional iniciará a chamada em instantes'}
+        </p>
+        <Loader2 size={24} className="animate-spin mx-auto mb-8" style={{ color: '#c4a882' }} />
+        <div className="p-4 rounded-xl max-w-xs mx-auto text-left" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+          <p className="text-xs mb-2" style={{ color: '#b8b0aa' }}>Dicas para uma boa sessão:</p>
+          <ul className="text-xs space-y-1.5" style={{ color: '#6b5f57' }}>
+            <li>• Escolha um local tranquilo e privado</li>
+            <li>• Use fones de ouvido se possível</li>
+            <li>• Boa iluminação ajuda na comunicação</li>
+            <li>• Permita acesso à câmera e microfone</li>
           </ul>
         </div>
       </div>
     </div>
   );
 
-  if (step === 'video') return (
-    <div className="h-screen" style={{ background: '#2a2523' }}>
-      <iframe src={jitsiUrl} allow="camera; microphone; display-capture; autoplay; clipboard-write"
-        allowFullScreen className="w-full h-full border-0" title="Teleconsulta" />
-    </div>
-  );
-
-  if (step === 'ended') return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f5f2ee' }}>
-      <div className="text-center">
-        <Video size={28} style={{ color: '#54423b' }} className="mx-auto mb-4" />
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Sessão encerrada</h1>
-        <p className="text-sm" style={{ color: '#b8b0aa' }}>Obrigado. Você pode fechar esta janela.</p>
+  // Connected — video call
+  if (step === 'connected') return (
+    <div className="h-screen flex flex-col" style={{ background: '#0f0a08' }}>
+      <div className="flex-1 relative">
+        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+        <div className="absolute bottom-20 right-3 w-32 h-24 sm:w-44 sm:h-32 rounded-2xl overflow-hidden" style={{ border: '2px solid rgba(255,255,255,0.1)' }}>
+          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" style={{ transform: 'scaleX(-1)' }} />
+          {camOff && <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#2a2523' }}><VideoOff size={16} style={{ color: '#6b5f57' }} /></div>}
+        </div>
+      </div>
+      <div className="h-20 flex items-center justify-center gap-4" style={{ background: 'rgba(26,20,18,0.95)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <button onClick={toggleMute} className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: muted ? 'rgba(198,40,40,0.2)' : 'rgba(255,255,255,0.08)', color: muted ? '#ef9a9a' : '#e8d8c3' }}>
+          {muted ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
+        <button onClick={toggleCam} className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: camOff ? 'rgba(198,40,40,0.2)' : 'rgba(255,255,255,0.08)', color: camOff ? '#ef9a9a' : '#e8d8c3' }}>
+          {camOff ? <VideoOff size={20} /> : <Video size={20} />}
+        </button>
+        <button onClick={hangUp} className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: '#c62828', color: 'white' }}>
+          <PhoneOff size={22} />
+        </button>
       </div>
     </div>
   );
 
+  // Ended
+  if (step === 'ended') return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f5f2ee' }}>
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(84,66,59,0.08)' }}>
+          <Video size={24} style={{ color: '#54423b' }} />
+        </div>
+        <h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Sessão encerrada</h1>
+        <p className="text-sm" style={{ color: '#b8b0aa' }}>Obrigado pela sua sessão. Você pode fechar esta página.</p>
+      </div>
+    </div>
+  );
+
+  // Error
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#f5f2ee' }}>
       <div className="text-center">
         <AlertCircle size={40} style={{ color: '#c62828' }} className="mx-auto mb-4" />
-        <h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Sessão não encontrada</h1>
-        <p className="text-sm" style={{ color: '#b8b0aa' }}>Verifique o link com seu terapeuta.</p>
+        <h1 className="text-xl font-semibold mb-2" style={{ color: '#2a2523' }}>Não foi possível conectar</h1>
+        <p className="text-sm mb-4" style={{ color: '#b8b0aa' }}>Verifique o link com seu profissional e tente novamente.</p>
+        <button onClick={() => window.location.reload()} className="h-10 px-6 rounded-xl text-sm font-medium" style={{ background: '#54423b', color: '#f5f2ee' }}>Tentar novamente</button>
       </div>
     </div>
   );

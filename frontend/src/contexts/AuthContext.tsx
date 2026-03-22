@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import { authApi, isLoggedIn, setAuthErrorHandler, type AuthUser } from "@/lib/api";
 
 interface AuthContextType {
-  isAdmin: boolean;
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -41,11 +41,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { await authApi.logout(); } finally { setUser(null); }
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, isAdmin: !!(user as any)?.isAdmin, signIn, signUp, logout, error, clearError: () => setError(null) }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const clearError = useCallback(() => setError(null), []);
+
+  // CRITICAL: memoize value so children don't re-render unless actual data changes
+  const value = useMemo(() => ({
+    user, loading, isAuthenticated: !!user, isAdmin: !!(user as any)?.isAdmin,
+    signIn, signUp, logout, error, clearError,
+  }), [user, loading, error, signIn, signUp, logout, clearError]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

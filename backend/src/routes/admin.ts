@@ -154,10 +154,10 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.post('/api/admin/plans', { preHandler: adminGuard }, async (req, reply) => {
     const parsed = z.object({
-      name: z.string().min(1), slug: z.string().min(1), maxPatients: z.number().default(50),
-      maxAppointmentsMonth: z.number().default(100), hasAI: z.boolean().default(false),
+      name: z.string().min(1), description: z.string().optional(), price: z.number().default(0), interval: z.string().default('monthly'), maxPatients: z.number().default(-1),
+      maxAppointmentsMonth: z.number().default(-1), hasAI: z.boolean().default(false),
       hasTelehealth: z.boolean().default(false), hasWhatsapp: z.boolean().default(false),
-      hasTranscription: z.boolean().default(false), price: z.number().default(0),
+      hasTranscription: z.boolean().default(false),
     }).safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.flatten().fieldErrors });
     const [plan] = db.insert(plans).values(parsed.data).returning().all();

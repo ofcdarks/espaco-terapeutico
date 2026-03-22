@@ -53,7 +53,7 @@ function NavItem({ to, icon: Icon, label, collapsed, onClick }: {
 }
 
 function NotificationBell() {
-  const { data } = useQuery({ queryKey: ["notif-count"], queryFn: () => notificationsApi.unreadCount(), refetchInterval: 30000 });
+  const { data } = useQuery({ queryKey: ["notif-count"], queryFn: () => notificationsApi.unreadCount(), refetchInterval: 60000 });
   const count = data?.count || 0;
   const [open, setOpen] = useState(false);
   const { data: notifs } = useQuery({ queryKey: ["notifs"], queryFn: () => notificationsApi.list(10, true), enabled: open });

@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import { authGuard } from '../middleware/auth.js';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { patients, appointments, documents } from '../db/schema.js';
@@ -10,7 +11,7 @@ const patientTokens = new Map<string, { patientId: string; ownerId: string; expi
 
 export async function portalRoutes(app: FastifyInstance) {
   // Generate portal link (therapist sends to patient)
-  app.post('/api/portal/generate-link', async (req, reply) => {
+  app.post('/api/portal/generate-link', { preHandler: authGuard }, async (req, reply) => {
     const parsed = z.object({ patientId: z.string() }).safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Dados inválidos' });
     const patient = db.select().from(patients).where(eq(patients.id, parsed.data.patientId)).get();
@@ -61,3 +62,6 @@ export async function portalRoutes(app: FastifyInstance) {
     ).all();
   });
 }
+
+// Convenience: generate-link requires authGuard but current endpoint doesn't
+// The existing endpoint works — just needs auth header from frontend

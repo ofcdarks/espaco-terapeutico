@@ -394,7 +394,7 @@ export const stripeApi = {
 
 // ── Portal API ──────────────────────────────────────────────
 export const portalApi = {
-  async getLink(patientId: string) { return apiFetch<{ url: string; token: string }>(`/api/portal/link/${patientId}`); },
+  async generateLink(patientId: string) { return apiFetch<{ url: string; token: string }>('/api/portal/generate-link', { method: 'POST', body: JSON.stringify({ patientId }) }); },
 };
 
 // ── 2FA API ─────────────────────────────────────────────────

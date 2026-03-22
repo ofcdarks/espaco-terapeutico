@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LoadingState, Modal, ConfirmDialog } from "@/components/common";
-import { patientsApi, appointmentsApi, recordsApi, transactionsApi, documentsApi, lgpdApi } from "@/lib/api";
+import { patientsApi, appointmentsApi, recordsApi, transactionsApi, documentsApi, lgpdApi, portalApi } from "@/lib/api";
 import { formatCurrency, formatDate, maskCpf, maskPhone, STATUS_CONFIG, getInitials } from "@/lib/utils";
-import { ArrowLeft, Calendar, FileText, DollarSign, Clock, Mail, Phone, MapPin, Download, Trash2, Shield, FileCheck } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, DollarSign, Clock, Mail, Phone, MapPin, Download, Trash2, Shield, FileCheck, ExternalLink, Copy } from "lucide-react";
 import { toast } from "sonner";
 import type { Patient, Appointment, ConsultationRecord, Transaction, Document } from "@/types";
 
@@ -19,6 +19,18 @@ export default function PacienteDetalhe() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("timeline");
   const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [portalLink, setPortalLink] = useState("");
+
+  const generatePortalLink = async () => {
+    if (!id) return;
+    try {
+      const { token } = await portalApi.generateLink(id);
+      const link = `${window.location.origin}/portal/${token}`;
+      setPortalLink(link);
+      navigator.clipboard.writeText(link);
+      toast.success("Link do portal copiado!");
+    } catch { toast.error("Erro ao gerar link"); }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -70,6 +82,12 @@ export default function PacienteDetalhe() {
             <div className="flex flex-wrap gap-4 mt-2 text-sm text-surface-500">
               {patient.email && <span className="flex items-center gap-1"><Mail size={13}/>{patient.email}</span>}
               {patient.phone && <span className="flex items-center gap-1"><Phone size={13}/>{maskPhone(patient.phone)}</span>}
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={generatePortalLink} className="btn-primary h-8 text-xs flex items-center gap-1.5"><ExternalLink size={12} /> Portal do Paciente</button>
+              {portalLink && <button onClick={() => { navigator.clipboard.writeText(portalLink); toast.success("Link copiado!"); }} className="btn-ghost h-8 text-xs flex items-center gap-1.5"><Copy size={12} /> Copiar Link</button>}
+            </div>
+            {portalLink && <code className="text-[10px] text-surface-400 block mt-1 break-all">{portalLink}</code>}
               {patient.cpf && <span className="flex items-center gap-1">CPF: {maskCpf(patient.cpf)}</span>}
               {patient.birthDate && <span className="flex items-center gap-1"><Calendar size={13}/>{formatDate(patient.birthDate)}</span>}
             </div>

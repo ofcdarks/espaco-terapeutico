@@ -9,7 +9,14 @@ export function formatCurrency(value: number): string {
 }
 export function formatDate(date: string): string {
   if (!date) return "";
-  return new Date(date + "T12:00:00").toLocaleDateString("pt-BR");
+  try {
+    // Handle: "2026-03-22", "2026-03-22T03:20:00", "2026-03-22 03:20:00" (SQLite)
+    let d: Date;
+    if (date.length === 10) d = new Date(date + "T12:00:00"); // date only
+    else d = new Date(date.replace(" ", "T")); // datetime with space or T
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("pt-BR");
+  } catch { return ""; }
 }
 export function getInitials(name: string): string {
   return name.split(" ").filter(Boolean).slice(0, 2).map(n => n[0]).join("").toUpperCase();

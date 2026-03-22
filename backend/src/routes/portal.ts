@@ -11,11 +11,13 @@ const patientTokens = new Map<string, { patientId: string; ownerId: string; expi
 export async function portalRoutes(app: FastifyInstance) {
   // Generate portal link (therapist sends to patient)
   app.post('/api/portal/generate-link', async (req, reply) => {
-    const parsed = z.object({ patientId: z.string(), ownerId: z.string() }).safeParse(req.body);
+    const parsed = z.object({ patientId: z.string() }).safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Dados inválidos' });
+    const patient = db.select().from(patients).where(eq(patients.id, parsed.data.patientId)).get();
+    if (!patient) return reply.status(404).send({ error: 'Paciente não encontrado' });
     const token = crypto.randomBytes(24).toString('hex');
-    patientTokens.set(token, { ...parsed.data, expiresAt: Date.now() + 30 * 86400000 }); // 30 days
-    return { token, url: `/portal/${token}` };
+    patientTokens.set(token, { patientId: patient.id, ownerId: patient.ownerId, expiresAt: Date.now() + 30 * 86400000 });
+    return { token, url: "/portal/" + token + "" };
   });
 
   // Patient access via token

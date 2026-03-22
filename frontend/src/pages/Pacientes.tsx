@@ -17,6 +17,8 @@ export default function Pacientes() {
   const [filter, setFilter] = useState<'ativo' | 'inativo' | 'todos'>('ativo');
   const [form, setForm] = useState({ name: "", email: "", phone: "", cpf: "", birthDate: "", address: "", notes: "", status: "ativo" });
   const nav = useNavigate();
+  const API = import.meta.env.VITE_API_URL || "";
+  const auth = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken")}`, "Content-Type": "application/json" });
 
   const filtered = (patients || []).filter((p: any) => {
     const matchSearch = p.name?.toLowerCase().includes(dSearch.toLowerCase()) || p.email?.toLowerCase().includes(dSearch.toLowerCase()) || p.cpf?.includes(dSearch);
@@ -100,6 +102,7 @@ export default function Pacientes() {
                 <button onClick={e => { e.stopPropagation(); setEditing(p); setForm(p); setShowForm(true); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-surface-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-600/10 transition-all" title="Editar">
                   <Edit size={13} />
                 </button>
+                <button onClick={async e => { e.stopPropagation(); try { const r = await fetch(`${API}/api/portal/generate-link`, { method: "POST", headers: auth(), body: JSON.stringify({ patientId: p.id, ownerId: "" }) }); const d = await r.json(); navigator.clipboard.writeText(window.location.origin + d.url); toast.success("Link do portal copiado!"); } catch { toast.error("Erro"); } }} className="w-7 h-7 rounded-lg flex items-center justify-center text-surface-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all" title="Portal do Paciente"><ExternalLink size={13} /></button>
                 <button onClick={e => { e.stopPropagation(); setDeleteTarget(p.id); }} className="w-7 h-7 rounded-lg flex items-center justify-center text-surface-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all" title="Remover">
                   <Trash2 size={13} />
                 </button>

@@ -42,7 +42,7 @@ export default function App() {
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/teleconsulta/entrar/:sessionId" element={<PatientWaiting />} />
-              <Route path="/portal/:patientId" element={<Portal />} />
+              <Route path="/portal/:token" element={<Portal />} />
               <Route path="/assinar/:id" element={<AssinarContrato />} />
               <Route path="/cadastro/:linkId" element={<CadastroPaciente />} />
               <Route path="/" element={<P><Dashboard /></P>} />

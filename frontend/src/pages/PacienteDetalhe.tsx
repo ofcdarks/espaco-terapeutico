@@ -82,15 +82,14 @@ export default function PacienteDetalhe() {
             <div className="flex flex-wrap gap-4 mt-2 text-sm text-surface-500">
               {patient.email && <span className="flex items-center gap-1"><Mail size={13}/>{patient.email}</span>}
               {patient.phone && <span className="flex items-center gap-1"><Phone size={13}/>{maskPhone(patient.phone)}</span>}
+              {patient.cpf && <span className="flex items-center gap-1">CPF: {maskCpf(patient.cpf)}</span>}
+              {patient.birthDate && <span className="flex items-center gap-1"><Calendar size={13}/>{formatDate(patient.birthDate)}</span>}
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={generatePortalLink} className="btn-primary h-8 text-xs flex items-center gap-1.5"><ExternalLink size={12} /> Portal do Paciente</button>
               {portalLink && <button onClick={() => { navigator.clipboard.writeText(portalLink); toast.success("Link copiado!"); }} className="btn-ghost h-8 text-xs flex items-center gap-1.5"><Copy size={12} /> Copiar Link</button>}
             </div>
             {portalLink && <code className="text-[10px] text-surface-400 block mt-1 break-all">{portalLink}</code>}
-              {patient.cpf && <span className="flex items-center gap-1">CPF: {maskCpf(patient.cpf)}</span>}
-              {patient.birthDate && <span className="flex items-center gap-1"><Calendar size={13}/>{formatDate(patient.birthDate)}</span>}
-            </div>
             {patient.notes && <p className="text-sm text-surface-500 mt-2 italic">"{patient.notes}"</p>}
           </div>
           <div className="flex gap-3 shrink-0">

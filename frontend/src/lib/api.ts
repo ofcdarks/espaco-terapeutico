@@ -360,7 +360,7 @@ export const adminApi = {
   async deletePlan(id: string) { return apiFetch(`/api/admin/plans/${id}`, { method: 'DELETE' }); },
   async assignSubscription(data: any) { return apiFetch('/api/admin/subscriptions', { method: 'POST', body: JSON.stringify(data) }); },
   async getConfig() { return apiFetch<Record<string, string>>('/api/admin/config'); },
-  async saveConfig(data: Record<string, string>) { return apiFetch('/api/admin/config', { method: 'PUT', body: JSON.stringify(data) }); },
+  async saveConfig(data: Record<string, string>) { const items = Object.entries(data).map(([key, value]) => ({ key, value })); return apiFetch("/api/admin/config/bulk", { method: "POST", body: JSON.stringify(items) }); },
 };
 
 // ── Transcription API ───────────────────────────────────────

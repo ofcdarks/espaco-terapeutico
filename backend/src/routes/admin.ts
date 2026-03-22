@@ -46,7 +46,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // ── Global Config (API keys, settings) ────────────────────
   app.get('/api/admin/config', { preHandler: adminGuard }, async () => {
-    return db.select().from(systemConfig).all();
+    const rows = db.select().from(systemConfig).all(); const result: Record<string, string> = {}; for (const r of rows) result[r.key] = r.value; return result;
   });
 
   app.post('/api/admin/config', { preHandler: adminGuard }, async (req, reply) => {

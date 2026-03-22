@@ -58,7 +58,15 @@ await app.register(cors, {
   origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
   credentials: true,
 });
-await app.register(helmet, { contentSecurityPolicy: false });
+await app.register(helmet, {
+  contentSecurityPolicy: false,
+  // Allow camera/microphone for teleconsulta
+  permissionsPolicy: false,
+});
+// Manually set permissions for camera/mic
+app.addHook("onSend", async (_req, reply) => {
+  reply.header("Permissions-Policy", "camera=(self), microphone=(self), fullscreen=(self), display-capture=(self)");
+});
 await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 
 // Auth with stricter rate limit
